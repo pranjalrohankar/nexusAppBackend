@@ -2,3 +2,6 @@ target/
 .idea/
 *.class
 .env
+*.jar
+*.war
+src/main/resources/application.properties

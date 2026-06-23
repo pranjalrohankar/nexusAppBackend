@@ -1,0 +1,41 @@
+# ================================
+# Nexus Backend - App Configuration
+# Copy this file to application.properties and fill in your values
+# ================================
+
+server.port=8080
+
+# PostgreSQL - Supabase
+spring.datasource.url=jdbc:postgresql://<supabase-host>:6543/postgres?sslmode=require
+spring.datasource.username=<supabase-username>
+spring.datasource.password=<supabase-password>
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# HikariCP
+spring.datasource.hikari.maximum-pool-size=5
+spring.datasource.hikari.minimum-idle=2
+
+# JPA / Hibernate
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.properties.hibernate.format_sql=true
+
+# JWT
+nexus.jwt.secret=<your-jwt-secret-key>
+nexus.jwt.expiration-ms=86400000
+
+# SMTP - Gmail
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=<your-gmail>
+spring.mail.password=<your-gmail-app-password>
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.default-encoding=UTF-8
+
+# Enquiry notification recipient
+nexus.enquiry.admin-email=<admin-email>
+
+# CORS
+nexus.cors.allowed-origins=http://localhost:8081,http://localhost:19006,exp://localhost:8081,http://10.0.2.2:8081,http://10.0.2.2:19006
