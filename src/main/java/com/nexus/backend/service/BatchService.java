@@ -1,7 +1,6 @@
 package com.nexus.backend.service;
 
 import com.nexus.backend.dto.BatchDto;
-import com.nexus.backend.enums.BatchStatus;
 import com.nexus.backend.model.Batch;
 import com.nexus.backend.repository.BatchRepository;
 import org.springframework.beans.factory.annotation.Autowired;
