@@ -2,8 +2,6 @@ package com.nexus.backend.controller;
 
 import com.nexus.backend.dto.ApiResponse;
 import com.nexus.backend.dto.CreateUserRequest;
-import com.nexus.backend.model.Student;
-import com.nexus.backend.model.Teacher;
 import com.nexus.backend.repository.StudentRepository;
 import com.nexus.backend.repository.TeacherRepository;
 import com.nexus.backend.service.UserService;
