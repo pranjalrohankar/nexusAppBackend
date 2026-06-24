@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+// Handles HTTP requests for batch management
 @RestController
 @RequestMapping("/api/batches")
 public class BatchController{
@@ -17,25 +18,17 @@ public class BatchController{
         this.batchService = batchService;
     }
 
+    // POST /api/batches - Admin creates a new batch
     @PostMapping
     public Batch createBatch(@RequestBody BatchDto request) {
         return batchService.createBatch(request);
     }
 
+    // GET /api/batches - Returns all batches from the database
     @GetMapping
     public List<Batch> getAllBatches() {
         return batchService.getAllBatches();
     }
 
-//    @GetMapping("/{id}")
-//    public Batch getBatchById(@PathVariable Long id) {
-//        return batchService.getBatchById(id);
-//    }
-//
-//    @DeleteMapping("/{id}")
-//    public String deleteBatch(@PathVariable Long id) {
-//        batchService.deleteBatch(id);
-//        return "Batch deleted successfully";
-//    }
 
 }
