@@ -11,6 +11,3 @@ target/
 
 # Logs
 *.log
-
-# Environment/secrets
-application-local.properties
