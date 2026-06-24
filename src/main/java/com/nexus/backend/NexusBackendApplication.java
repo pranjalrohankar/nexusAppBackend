@@ -18,14 +18,18 @@ public class NexusBackendApplication {
     @Bean
     CommandLineRunner seedAdmin(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return args -> {
-            if (!userRepository.existsByEmail("admin@nexus.com")) {
-                User admin = new User();
-                admin.setName("Admin");
-                admin.setEmail("admin@nexus.com");
-                admin.setPassword(passwordEncoder.encode("admin123"));
-                admin.setRole(User.Role.ADMIN);
-                userRepository.save(admin);
-                System.out.println("✅ Admin seeded: admin@nexus.com / admin123");
+            try {
+                if (!userRepository.existsByEmail("admin@nexus.com")) {
+                    User admin = new User();
+                    admin.setName("Admin");
+                    admin.setEmail("admin@nexus.com");
+                    admin.setPassword(passwordEncoder.encode("admin123"));
+                    admin.setRole(User.Role.ADMIN);
+                    userRepository.save(admin);
+                    System.out.println("✅ Admin seeded: admin@nexus.com / admin123");
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ Admin seed skipped: " + e.getMessage());
             }
         };
     }
