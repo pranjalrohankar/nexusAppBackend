@@ -16,6 +16,37 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    public void sendEnquiryNotification(String adminEmail, com.nexus.backend.model.Enquiry enquiry) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(adminEmail);
+            helper.setSubject("New Enquiry from " + enquiry.getFullName());
+            String body = "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>"
+                + "<div style='background:#7B2CBF;padding:24px 32px;border-radius:12px 12px 0 0;text-align:center;'>"
+                + "<span style='font-size:28px;font-weight:bold;color:#fff;letter-spacing:3px;'>NE<span style='color:#FFB703;'>X</span>US</span>"
+                + "</div>"
+                + "<div style='padding:24px 32px;border:1px solid #e5e7eb;border-top:none;'>"
+                + "<h2 style='color:#1f2937;margin:0 0 16px;'>New Enquiry Received</h2>"
+                + "<table cellpadding='0' cellspacing='0' style='width:100%;border-collapse:collapse;'>"
+                + "<tr><td style='padding:8px 0;color:#6b7280;width:120px;'>Name</td><td style='padding:8px 0;font-weight:600;color:#1f2937;'>" + enquiry.getFullName() + "</td></tr>"
+                + "<tr><td style='padding:8px 0;color:#6b7280;'>Email</td><td style='padding:8px 0;font-weight:600;color:#1f2937;'>" + enquiry.getEmail() + "</td></tr>"
+                + "<tr><td style='padding:8px 0;color:#6b7280;'>Phone</td><td style='padding:8px 0;font-weight:600;color:#1f2937;'>" + enquiry.getPhoneNumber() + "</td></tr>"
+                + "<tr><td style='padding:8px 0;color:#6b7280;'>Course</td><td style='padding:8px 0;font-weight:600;color:#7B2CBF;'>" + (enquiry.getCourse() != null ? enquiry.getCourse() : "Not specified") + "</td></tr>"
+                + "<tr><td style='padding:8px 0;color:#6b7280;vertical-align:top;'>Message</td><td style='padding:8px 0;color:#1f2937;'>" + (enquiry.getMessage() != null ? enquiry.getMessage() : "-") + "</td></tr>"
+                + "</table>"
+                + "</div>"
+                + "<div style='background:#f3f4f6;padding:14px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;'>"
+                + "<p style='margin:0;color:#9ca3af;font-size:11px;'>2026 Nexus Corporate Training Center LLP</p>"
+                + "</div></div>";
+            helper.setText(body, true);
+            mailSender.send(message);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send enquiry email: " + e.getMessage());
+        }
+    }
+
     public void sendCredentials(String toEmail, String name, String role, String password, String course) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
