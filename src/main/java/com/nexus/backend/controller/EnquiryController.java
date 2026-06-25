@@ -3,10 +3,9 @@ package com.nexus.backend.controller;
 import com.nexus.backend.dto.EnquiryRequest;
 import com.nexus.backend.model.Enquiry;
 import com.nexus.backend.service.EnquiryService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/enquiries")
@@ -18,8 +17,15 @@ public class EnquiryController{
         this.enquiryService = enquiryService;
     }
 
+    // POST /api/enquiries - Student submits enquiry form (saves to DB + sends email to admin)
     @PostMapping
     public Enquiry createEnquiry(@RequestBody EnquiryRequest request) {
         return enquiryService.saveEnquiry(request);
+    }
+
+    // GET /api/enquiries - Admin fetches all enquiries to display in admin panel
+    @GetMapping
+    public List<Enquiry> getAllEnquiries() {
+        return enquiryService.getAllEnquiries();
     }
 }

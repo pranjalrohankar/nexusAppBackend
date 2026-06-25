@@ -39,12 +39,4 @@ public class BatchService {
         return batchRepository.findAll();
     }
 
-//    public Batch getBatchById(Long id) {
-//        return batchRepository.findById(id)
-//                .orElseThrow(() -> new RuntimeException("Batch not found"));
-//    }
-//
-//    public void deleteBatch(Long id) {
-//        batchRepository.deleteById(id);
-//    }
 }
