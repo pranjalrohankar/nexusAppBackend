@@ -65,6 +65,8 @@ public class StudyMaterialService {
 
     // Deletes a material record from the database by ID
     public void deleteMaterial(Long id) {
-        repository.deleteById(id);
+        if (id != null) {
+            repository.deleteById(id);
+        }
     }
 }

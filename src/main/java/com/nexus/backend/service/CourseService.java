@@ -20,6 +20,7 @@ public class CourseService {
         this.repository = repository;
     }
 
+    @SuppressWarnings("null")
     public Course createCourse(Course course) {
         return repository.save(course);
     }
@@ -29,6 +30,7 @@ public class CourseService {
                 .orElseThrow(() -> new EntityNotFoundException("Course not found with id: " + id));
     }
 
+    @SuppressWarnings("null")
     public Page<Course> listCourses(Pageable pageable) {
         return repository.findAll(pageable);
     }
@@ -45,6 +47,9 @@ public class CourseService {
     }
 
     public Course updateCourse(Long id, Course updatedCourse) {
+        if (id == null) {
+            throw new EntityNotFoundException("Course id cannot be null");
+        }
         Course existing = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Course not found with id: " + id));
 
@@ -65,7 +70,7 @@ public class CourseService {
     }
 
     public void deleteCourse(Long id) {
-        if (!repository.existsById(id)) {
+        if (id == null || !repository.existsById(id)) {
             throw new EntityNotFoundException("Course not found with id: " + id);
         }
         repository.deleteById(id);
