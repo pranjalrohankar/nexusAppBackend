@@ -1,5 +1,6 @@
 package com.nexus.backend.controller;
 
+import com.nexus.backend.dto.ApiResponse;
 import com.nexus.backend.dto.CourseDto;
 import com.nexus.backend.model.Course;
 import com.nexus.backend.service.CourseService;
@@ -24,10 +25,12 @@ public class CourseController {
     }
 
     @PostMapping
+    @SuppressWarnings("null")
     public ResponseEntity<CourseDto> createCourse(@Valid @RequestBody CourseDto dto) {
         Course saved = service.createCourse(toEntity(dto));
         CourseDto resp = toDto(saved);
-        return ResponseEntity.created(URI.create("/api/courses/" + resp.getId())).body(resp);
+        URI location = URI.create("/api/courses/" + resp.getId());
+        return ResponseEntity.created(location).body(resp);
     }
 
     @GetMapping("/{id}")
@@ -49,9 +52,9 @@ public class CourseController {
     }
 
     @GetMapping("/active")
-    public ResponseEntity<List<CourseDto>> active() {
+    public ResponseEntity<ApiResponse> active() {
         List<CourseDto> list = service.findByStatus(Course.Status.ACTIVE).stream().map(this::toDto).collect(Collectors.toList());
-        return ResponseEntity.ok(list);
+        return ResponseEntity.ok(ApiResponse.ok("Active courses fetched", list));
     }
 
     @GetMapping("/by-status")

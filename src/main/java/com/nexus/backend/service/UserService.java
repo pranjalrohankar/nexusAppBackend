@@ -1,9 +1,11 @@
 package com.nexus.backend.service;
 
 import com.nexus.backend.dto.CreateUserRequest;
+import com.nexus.backend.model.Enrollment;
 import com.nexus.backend.model.Student;
 import com.nexus.backend.model.Teacher;
 import com.nexus.backend.model.User;
+import com.nexus.backend.repository.EnrollmentRepository;
 import com.nexus.backend.repository.StudentRepository;
 import com.nexus.backend.repository.TeacherRepository;
 import com.nexus.backend.repository.UserRepository;
@@ -22,6 +24,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
 
@@ -51,6 +54,9 @@ public class UserService {
                 saveTeacherProfile(user, req);
             }
         } else {
+            if (existing == null) {
+                throw new RuntimeException("User not found");
+            }
             user = existing;
             // Re-enrollment: generate new password
             rawPassword = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
@@ -60,10 +66,21 @@ public class UserService {
             if (role == User.Role.STUDENT && req.getCourse() != null && !req.getCourse().isBlank()) {
                 Student s = studentRepository.findByUser(user).orElse(new Student());
                 s.setUser(user);
-                s.setCourse(req.getCourse());
+                if (s.getCourse() == null) s.setCourse(req.getCourse());
                 s.setEnrollmentDate(req.getEnrollmentDate());
                 s.setPaymentStatus(req.getPaymentStatus());
                 studentRepository.save(s);
+                // Add enrollment row only if not already enrolled in this course
+                if (!enrollmentRepository.existsByStudentAndCourseTitle(s, req.getCourse())) {
+                    Enrollment e = new Enrollment();
+                    e.setStudent(s);
+                    e.setCourseTitle(req.getCourse());
+                    e.setEnrollmentDate(req.getEnrollmentDate());
+                    e.setPaymentStatus(req.getPaymentStatus());
+                    enrollmentRepository.save(e);
+                } else {
+                    throw new RuntimeException("Student is already enrolled in this course.");
+                }
             }
         }
 
@@ -106,6 +123,16 @@ public class UserService {
             + ", guardian=" + req.getGuardianName() + ", pinCode=" + req.getPinCode()
             + ", enrollmentDate=" + req.getEnrollmentDate() + ", paymentStatus=" + req.getPaymentStatus());
         studentRepository.save(s);
+
+        // Create first enrollment record
+        if (req.getCourse() != null && !req.getCourse().isBlank()) {
+            Enrollment e = new Enrollment();
+            e.setStudent(s);
+            e.setCourseTitle(req.getCourse());
+            e.setEnrollmentDate(req.getEnrollmentDate());
+            e.setPaymentStatus(req.getPaymentStatus());
+            enrollmentRepository.save(e);
+        }
     }
 
     private void saveTeacherProfile(User user, CreateUserRequest req) {

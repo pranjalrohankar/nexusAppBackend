@@ -17,12 +17,19 @@ public class EmailService {
     private String fromEmail;
 
     public void sendEnquiryNotification(String adminEmail, com.nexus.backend.model.Enquiry enquiry) {
+        if (fromEmail == null || adminEmail == null) {
+            throw new IllegalArgumentException("Email addresses cannot be null");
+        }
+        String safeFromEmail = fromEmail;
+        String safeAdminEmail = adminEmail;
+        String charset = "UTF-8";
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
-            helper.setFrom(fromEmail);
-            helper.setTo(adminEmail);
-            helper.setSubject("New Enquiry from " + enquiry.getFullName());
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, charset);
+            helper.setFrom(safeFromEmail);
+            helper.setTo(safeAdminEmail);
+            String fullName = enquiry.getFullName() != null ? enquiry.getFullName() : "Unknown";
+            helper.setSubject("New Enquiry from " + fullName);
             String body = "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>"
                 + "<div style='background:#7B2CBF;padding:24px 32px;border-radius:12px 12px 0 0;text-align:center;'>"
                 + "<span style='font-size:28px;font-weight:bold;color:#fff;letter-spacing:3px;'>NE<span style='color:#FFB703;'>X</span>US</span>"
@@ -48,15 +55,25 @@ public class EmailService {
     }
 
     public void sendCredentials(String toEmail, String name, String role, String password, String course) {
+        if (fromEmail == null || toEmail == null) {
+            throw new IllegalArgumentException("Email addresses cannot be null");
+        }
+        String safeFromEmail = fromEmail;
+        String safeToEmail = toEmail;
+        String charset = "UTF-8";
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, charset);
 
-            helper.setFrom(fromEmail);
-            helper.setTo(toEmail);
-            helper.setSubject("Welcome to Nexus Training Center - Your Login Credentials");
+            helper.setFrom(safeFromEmail);
+            helper.setTo(safeToEmail);
+            String subject = "Welcome to Nexus Training Center - Your Login Credentials";
+            helper.setSubject(subject);
 
-            String body = buildEmailBody(name, role, toEmail, password, course);
+            String body = buildEmailBody(name, role, safeToEmail, password, course);
+            if (body == null) {
+                throw new IllegalStateException("Email body cannot be null");
+            }
             helper.setText(body, true);
 
             mailSender.send(message);
@@ -66,10 +83,13 @@ public class EmailService {
     }
 
     private String credRow(String label, String value, String valueColor) {
+        String safeLabel = label != null ? label : "";
+        String safeValue = value != null ? value : "";
+        String safeColor = valueColor != null ? valueColor : "#000000";
         return "<tr>"
-            + "<td style='padding:7px 12px 7px 0;color:#6b7280;font-size:13px;white-space:nowrap;vertical-align:top;'>" + label + "</td>"
+            + "<td style='padding:7px 12px 7px 0;color:#6b7280;font-size:13px;white-space:nowrap;vertical-align:top;'>" + safeLabel + "</td>"
             + "<td style='padding:7px 0;color:#6b7280;font-size:13px;vertical-align:top;'>–</td>"
-            + "<td style='padding:7px 0 7px 10px;color:" + valueColor + ";font-weight:700;font-size:13px;word-break:break-all;overflow-wrap:anywhere;vertical-align:top;'>" + value + "</td>"
+            + "<td style='padding:7px 0 7px 10px;color:" + safeColor + ";font-weight:700;font-size:13px;word-break:break-all;overflow-wrap:anywhere;vertical-align:top;'>" + safeValue + "</td>"
             + "</tr>";
     }
 
