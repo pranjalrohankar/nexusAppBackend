@@ -6,6 +6,8 @@ import com.nexus.backend.repository.EnquiryRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class EnquiryService {
 
@@ -18,6 +20,11 @@ public class EnquiryService {
     public EnquiryService(EnquiryRepository enquiryRepository, EmailService emailService) {
         this.enquiryRepository = enquiryRepository;
         this.emailService = emailService;
+    }
+
+    // Returns all enquiries from DB (used by admin panel)
+    public List<Enquiry> getAllEnquiries() {
+        return enquiryRepository.findAll();
     }
 
     public Enquiry saveEnquiry(EnquiryRequest request) {
