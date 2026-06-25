@@ -1,19 +1,24 @@
 {
   "properties": [
     {
-      "name": "nexus.cors.allowed-origins",
+      "name": "nexus.enquiry.admin-email",
       "type": "java.lang.String",
-      "description": "Comma-separated list of allowed CORS origins."
+      "description": "Admin email address for enquiry notifications."
     },
     {
       "name": "nexus.jwt.secret",
       "type": "java.lang.String",
-      "description": "Secret key used for JWT token signing."
+      "description": "Secret key for JWT token signing."
     },
     {
       "name": "nexus.jwt.expiration-ms",
       "type": "java.lang.Long",
-      "description": "JWT token expiration time in milliseconds."
+      "description": "JWT token expiration in milliseconds."
+    },
+    {
+      "name": "nexus.cors.allowed-origins",
+      "type": "java.lang.String",
+      "description": "Comma-separated list of allowed CORS origins."
     }
   ]
 }

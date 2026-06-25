@@ -1,6 +1,5 @@
 package com.nexus.backend.model;
 
-import com.nexus.backend.enums.BatchStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
