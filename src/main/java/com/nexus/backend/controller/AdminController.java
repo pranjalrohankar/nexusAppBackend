@@ -110,6 +110,7 @@ public class AdminController {
         Student s = studentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
         var user = s.getUser();
+        enrollmentRepository.deleteLegacyEnrollmentsByStudentId(s.getId());
         enrollmentRepository.deleteByStudent(s);
         studentRepository.delete(s);
         userRepository.delete(user);

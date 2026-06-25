@@ -54,28 +54,23 @@ public class EmailService {
         }
     }
 
-    public void sendCredentials(String toEmail, String name, String role, String password, String course) {
+    public void sendCredentials(String toEmail, String name, String role, String password, String course, boolean isNew) {
         if (fromEmail == null || toEmail == null) {
             throw new IllegalArgumentException("Email addresses cannot be null");
         }
-        String safeFromEmail = fromEmail;
-        String safeToEmail = toEmail;
         String charset = "UTF-8";
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, false, charset);
-
-            helper.setFrom(safeFromEmail);
-            helper.setTo(safeToEmail);
-            String subject = "Welcome to Nexus Training Center - Your Login Credentials";
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            String subject = isNew
+                ? "Welcome to Nexus Training Center - Your Login Credentials"
+                : "Nexus Training Center - New Course Enrollment";
             helper.setSubject(subject);
-
-            String body = buildEmailBody(name, role, safeToEmail, password, course);
-            if (body == null) {
-                throw new IllegalStateException("Email body cannot be null");
-            }
+            String body = buildEmailBody(name, role, toEmail, password, course, isNew);
+            if (body == null) throw new IllegalStateException("Email body cannot be null");
             helper.setText(body, true);
-
             mailSender.send(message);
         } catch (Exception e) {
             throw new RuntimeException("Failed to send email: " + e.getMessage());
@@ -93,14 +88,13 @@ public class EmailService {
             + "</tr>";
     }
 
-    private String buildEmailBody(String name, String role, String email, String password, String course) {
+    private String buildEmailBody(String name, String role, String email, String password, String course, boolean isNew) {
         String roleDisplay = role.equals("STUDENT") ? "Student Portal" : "Teacher Portal";
         String portalUrl = "http://localhost:8081";
         String extraRow = "";
         if (role.equals("STUDENT") && course != null && !course.isBlank()) {
             extraRow = credRow("Course", course, "#7B2CBF");
         } else if (role.equals("TEACHER") && course != null && !course.isBlank()) {
-            // For teacher, course param carries "specialization|employmentType"
             String[] parts = course.split("\\|", 2);
             if (parts.length == 2) {
                 extraRow = credRow("Specialization", parts[0], "#7B2CBF")
@@ -110,16 +104,24 @@ public class EmailService {
             }
         }
 
+        String headline = isNew
+            ? "Welcome, " + name + "!"
+            : "New Course Enrolled, " + name + "!";
+        String intro = isNew
+            ? "Your account has been created on the <strong>Nexus " + roleDisplay + "</strong>. Here are your login credentials:"
+            : "You have been enrolled in a new course on the <strong>Nexus " + roleDisplay + "</strong>. Use your existing credentials to login:";
+        String credTitle = isNew ? "Your Login Details" : "Your Login Credentials";
+
         return "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;'>"
             + "<div style='background:#7B2CBF;padding:28px 32px;text-align:center;border-radius:12px 12px 0 0;'>"
             + "<span style='font-size:34px;font-weight:bold;color:#fff;letter-spacing:3px;'>NE<span style='color:#FFB703;'>X</span>US</span>"
             + "<div style='font-size:11px;color:#FFB703;letter-spacing:2px;margin-top:6px;font-weight:600;'>CORPORATE TRAINING CENTER LLP</div>"
             + "</div>"
             + "<div style='background:#ffffff;padding:28px 32px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;'>"
-            + "<h2 style='color:#1f2937;margin:0 0 10px;font-size:20px;'>Welcome, " + name + "!</h2>"
-            + "<p style='color:#4b5563;font-size:14px;line-height:1.6;margin:0 0 20px;'>Your account has been created on the <strong>Nexus " + roleDisplay + "</strong>. Here are your login credentials:</p>"
+            + "<h2 style='color:#1f2937;margin:0 0 10px;font-size:20px;'>" + headline + "</h2>"
+            + "<p style='color:#4b5563;font-size:14px;line-height:1.6;margin:0 0 20px;'>" + intro + "</p>"
             + "<div style='background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:16px 20px;margin-bottom:24px;'>"
-            + "<p style='margin:0 0 12px;font-size:11px;font-weight:700;color:#7B2CBF;text-transform:uppercase;letter-spacing:1px;'>Your Login Details</p>"
+            + "<p style='margin:0 0 12px;font-size:11px;font-weight:700;color:#7B2CBF;text-transform:uppercase;letter-spacing:1px;'>" + credTitle + "</p>"
             + "<table cellpadding='0' cellspacing='0' border='0' style='width:100%;border-collapse:collapse;'>"
             + credRow("Email", email, "#1f2937")
             + credRow("Password", password, "#1f2937")

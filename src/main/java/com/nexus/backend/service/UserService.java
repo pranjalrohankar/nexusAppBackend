@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
+
 
 @Service
 @RequiredArgsConstructor
@@ -58,8 +58,11 @@ public class UserService {
                 throw new RuntimeException("User not found");
             }
             user = existing;
-            // Re-enrollment: generate new password
-            rawPassword = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+            // Re-enrollment: update password to whatever admin entered
+            // so the student can login with the password shown in the email
+            if (rawPassword == null || rawPassword.isBlank()) {
+                throw new RuntimeException("Password is required to re-enroll student.");
+            }
             user.setPassword(passwordEncoder.encode(rawPassword));
             userRepository.save(user);
 
@@ -89,11 +92,10 @@ public class UserService {
                 Teacher t = teacherRepository.findByUser(user).orElse(null);
                 String spec = t != null ? t.getSpecialization() : "";
                 String emp  = t != null ? t.getEmploymentType() : "";
-                emailService.sendCredentials(user.getEmail(), user.getName(), "TEACHER", rawPassword, spec + "|" + emp);
+                emailService.sendCredentials(user.getEmail(), user.getName(), "TEACHER", rawPassword, spec + "|" + emp, isNew);
             } else {
-                Student s = studentRepository.findByUser(user).orElse(null);
-                String course = s != null ? s.getCourse() : "";
-                emailService.sendCredentials(user.getEmail(), user.getName(), "STUDENT", rawPassword, course);
+                String course = req.getCourse() != null ? req.getCourse() : "";
+                emailService.sendCredentials(user.getEmail(), user.getName(), "STUDENT", rawPassword, course, isNew);
             }
         } catch (Exception e) {
             System.err.println("⚠️ Email failed: " + e.getMessage());
