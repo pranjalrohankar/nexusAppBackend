@@ -4,4 +4,4 @@ target/
 .env
 *.jar
 *.war
-src/main/resources/application.properties
+
