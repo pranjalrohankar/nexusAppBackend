@@ -46,6 +46,10 @@ public class CourseService {
         return repository.findByStatus(status);
     }
 
+    public List<Course> listAllCourses() {
+        return repository.findAll();
+    }
+
     public Course updateCourse(Long id, Course updatedCourse) {
         if (id == null) {
             throw new EntityNotFoundException("Course id cannot be null");
