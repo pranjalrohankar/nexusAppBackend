@@ -9,6 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -30,7 +33,12 @@ public class AuthService {
             throw new RuntimeException("Access denied for role: " + request.getRole());
         }
 
+        LocalDateTime now = LocalDateTime.now();
+        user.setLastLogin(now);
+        userRepository.save(user);
+
+        String lastLoginStr = now.format(DateTimeFormatter.ofPattern("MMM dd, yyyy - hh:mm a"));
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
-        return new LoginResponse(token, user.getRole().name(), user.getName(), user.getEmail());
+        return new LoginResponse(token, user.getRole().name(), user.getName(), user.getEmail(), lastLoginStr);
     }
 }

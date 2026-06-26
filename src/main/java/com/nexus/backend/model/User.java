@@ -34,6 +34,8 @@ public class User {
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    private LocalDateTime lastLogin;
+
     public enum Role {
         STUDENT, TEACHER, ADMIN
     }
