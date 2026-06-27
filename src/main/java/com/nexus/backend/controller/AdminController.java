@@ -2,8 +2,12 @@ package com.nexus.backend.controller;
 
 import com.nexus.backend.dto.ApiResponse;
 import com.nexus.backend.dto.CreateUserRequest;
+import com.nexus.backend.model.Course;
+import com.nexus.backend.model.Enrollment;
 import com.nexus.backend.model.Student;
 import com.nexus.backend.model.Teacher;
+import com.nexus.backend.model.User;
+import com.nexus.backend.repository.CourseRepository;
 import com.nexus.backend.repository.EnrollmentRepository;
 import com.nexus.backend.repository.StudentRepository;
 import com.nexus.backend.repository.TeacherRepository;
@@ -16,10 +20,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -31,6 +37,107 @@ public class AdminController {
     private final TeacherRepository teacherRepository;
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final CourseRepository courseRepository;
+
+    @GetMapping("/profile")
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse> getAdminProfile() {
+        List<User> admins = userRepository.findByRole(User.Role.ADMIN);
+        User admin = admins.isEmpty() ? null : admins.get(0);
+
+        long totalStudents = studentRepository.count();
+        long totalTeachers = teacherRepository.count();
+        long totalCourses = courseRepository.count();
+        BigDecimal revenue = courseRepository.findAll().stream()
+            .filter(c -> c.getPrice() != null)
+            .map(Course::getPrice)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("name", admin != null ? admin.getName() : "Administrator");
+        data.put("email", admin != null ? admin.getEmail() : "");
+        data.put("createdAt", admin != null && admin.getCreatedAt() != null
+            ? admin.getCreatedAt().format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy")) : "");
+        data.put("lastLogin", admin != null && admin.getLastLogin() != null
+            ? admin.getLastLogin().format(java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy - hh:mm a")) : "Not recorded");
+        data.put("totalStudents", totalStudents);
+        data.put("totalTeachers", totalTeachers);
+        data.put("totalCourses", totalCourses);
+        data.put("revenue", revenue);
+
+        return ResponseEntity.ok(ApiResponse.ok("Admin profile fetched", data));
+    }
+
+    @GetMapping("/dashboard")
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse> getDashboard() {
+        long totalStudents = studentRepository.count();
+        long totalTeachers = teacherRepository.count();
+        long totalCourses = courseRepository.count();
+        long activeCourses = courseRepository.findByStatus(Course.Status.ACTIVE).size();
+
+        // Percentages based on real ratios
+        String studentsPct = totalStudents > 0 ? "+" + Math.min(99, (int)((double) enrollmentRepository.count() / totalStudents * 100)) + "%" : "+0%";
+        String teachersPct = totalTeachers > 0 ? "+" + Math.min(99, (int)((double) activeCourses / Math.max(1, totalCourses) * totalTeachers)) + "%" : "+0%";
+        String coursesPct = totalCourses > 0 ? "+" + (int)((double) activeCourses / totalCourses * 100) + "%" : "+0%";
+
+        BigDecimal revenue = courseRepository.findAll().stream()
+            .filter(c -> c.getPrice() != null)
+            .map(Course::getPrice)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal activeRevenue = courseRepository.findByStatus(Course.Status.ACTIVE).stream()
+            .filter(c -> c.getPrice() != null)
+            .map(Course::getPrice)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        String revenuePct = revenue.compareTo(BigDecimal.ZERO) > 0
+            ? "+" + activeRevenue.multiply(new java.math.BigDecimal(100)).divide(revenue, 0, java.math.RoundingMode.HALF_UP) + "%"
+            : "+0%";
+
+        // Recent enrollments (last 10)
+        List<Enrollment> allEnrollments = enrollmentRepository.findAll();
+        List<Map<String, Object>> recentEnrollments = allEnrollments.stream()
+            .sorted((a, b) -> {
+                String da = a.getEnrollmentDate() != null ? a.getEnrollmentDate() : "";
+                String db = b.getEnrollmentDate() != null ? b.getEnrollmentDate() : "";
+                return db.compareTo(da);
+            })
+            .limit(5)
+            .map(e -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", e.getId());
+                m.put("studentName", e.getStudent().getUser().getName());
+                m.put("courseTitle", e.getCourseTitle());
+                m.put("enrollmentDate", e.getEnrollmentDate() != null ? e.getEnrollmentDate() : "");
+                m.put("paymentStatus", e.getPaymentStatus() != null ? e.getPaymentStatus() : "");
+                return m;
+            }).collect(Collectors.toList());
+
+        List<Map<String, Object>> classesToday = courseRepository.findByStatus(Course.Status.ACTIVE).stream()
+            .filter(c -> c.getClassTimings() != null && !c.getClassTimings().isBlank())
+            .map(c -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", c.getId());
+                m.put("course", c.getTitle());
+                m.put("time", c.getClassTimings());
+                return m;
+            }).collect(Collectors.toList());
+
+        long newCourses = courseRepository.findByStatus(Course.Status.DRAFT).size();
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("totalStudents", totalStudents);
+        data.put("totalTeachers", totalTeachers);
+        data.put("totalCourses", totalCourses);
+        data.put("studentsPct", studentsPct);
+        data.put("teachersPct", teachersPct);
+        data.put("coursesPct", coursesPct);
+        data.put("revenuePct", revenuePct);
+        data.put("revenue", revenue);
+        data.put("recentEnrollments", recentEnrollments);
+        data.put("classesToday", classesToday);
+
+        return ResponseEntity.ok(ApiResponse.ok("Dashboard data fetched", data));
+    }
 
     @PostMapping("/users")
     public ResponseEntity<ApiResponse> createUser(@Valid @RequestBody CreateUserRequest request) {

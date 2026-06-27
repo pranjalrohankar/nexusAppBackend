@@ -54,6 +54,9 @@ public class CreateUserRequest {
     @JsonProperty("employmentType")
     private String employmentType;
 
+    @JsonProperty("courseIds")
+    private java.util.List<Integer> courseIds;
+
     private String password;
 
     @NotBlank

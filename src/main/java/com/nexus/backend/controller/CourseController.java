@@ -57,6 +57,12 @@ public class CourseController {
         return ResponseEntity.ok(ApiResponse.ok("Active courses fetched", list));
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<ApiResponse> all() {
+        List<CourseDto> list = service.listAllCourses().stream().map(this::toDto).collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.ok("All courses fetched", list));
+    }
+
     @GetMapping("/by-status")
     public ResponseEntity<List<CourseDto>> byStatus(@RequestParam Course.Status status) {
         List<CourseDto> list = service.findByStatus(status).stream().map(this::toDto).collect(Collectors.toList());

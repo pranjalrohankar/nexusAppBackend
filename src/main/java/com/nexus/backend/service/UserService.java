@@ -4,9 +4,12 @@ import com.nexus.backend.dto.CreateUserRequest;
 import com.nexus.backend.model.Enrollment;
 import com.nexus.backend.model.Student;
 import com.nexus.backend.model.Teacher;
+import com.nexus.backend.model.TeacherCourseAssignment;
 import com.nexus.backend.model.User;
+import com.nexus.backend.repository.CourseRepository;
 import com.nexus.backend.repository.EnrollmentRepository;
 import com.nexus.backend.repository.StudentRepository;
+import com.nexus.backend.repository.TeacherCourseAssignmentRepository;
 import com.nexus.backend.repository.TeacherRepository;
 import com.nexus.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 
@@ -25,6 +29,8 @@ public class UserService {
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final CourseRepository courseRepository;
+    private final TeacherCourseAssignmentRepository assignmentRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
 
@@ -156,8 +162,24 @@ public class UserService {
         System.out.println(">>> Saving Teacher: name=" + user.getName() + ", qual=" + req.getQualification()
             + ", spec=" + req.getSpecialization() + ", exp=" + req.getExperience()
             + ", joinDate=" + req.getJoinDate() + ", empType=" + req.getEmploymentType()
-            + ", city=" + req.getCity() + ", pinCode=" + req.getPinCode());
+            + ", city=" + req.getCity() + ", pinCode=" + req.getPinCode()
+            + ", courseIds=" + req.getCourseIds());
         teacherRepository.save(t);
+
+        // Save course assignments if provided
+        if (req.getCourseIds() != null && !req.getCourseIds().isEmpty()) {
+            System.out.println(">>> Assigning " + req.getCourseIds().size() + " courses to teacher");
+            for (Integer courseId : req.getCourseIds()) {
+                courseRepository.findById(courseId.longValue()).ifPresent(course -> {
+                    TeacherCourseAssignment assignment = TeacherCourseAssignment.builder()
+                        .teacher(t)
+                        .course(course)
+                        .assignedDate(LocalDate.now().toString())
+                        .build();
+                    assignmentRepository.save(assignment);
+                });
+            }
+        }
     }
 
     public boolean userExists(String email) {
