@@ -5,6 +5,8 @@ import com.nexus.backend.model.*;
 import com.nexus.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -22,6 +24,38 @@ public class TeacherController {
     private final CourseRepository courseRepository;
     private final TeacherCourseAssignmentRepository assignmentRepository;
     private final EnrollmentRepository enrollmentRepository;
+
+    @GetMapping("/profile")
+    public ResponseEntity<Map<String, Object>> getMyProfile() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String email = (String) auth.getPrincipal();
+            Optional<User> userOpt = userRepository.findByEmail(email);
+            if (userOpt.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "User not found");
+                return ResponseEntity.status(404).body(error);
+            }
+            Optional<Teacher> teacherOpt = teacherRepository.findByUser(userOpt.get());
+            if (teacherOpt.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "Teacher profile not found");
+                return ResponseEntity.status(404).body(error);
+            }
+            TeacherStatsDTO stats = buildTeacherStats(teacherOpt.get());
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("data", stats);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "Failed to fetch profile: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
 
     @GetMapping("/all")
     public ResponseEntity<Map<String, Object>> getAllTeachers() {
@@ -311,6 +345,10 @@ public class TeacherController {
             .coursesCount(assignments.size())
             .studentsCount(studentsCount)
             .assignedCourses(courseDTOs)
+            .street(teacher.getStreet())
+            .city(teacher.getCity())
+            .state(teacher.getState())
+            .pinCode(teacher.getPinCode())
             .build();
     }
 

@@ -25,6 +25,10 @@ public class TeacherStatsDTO {
     private Integer coursesCount;
     private Integer studentsCount;
     private List<CourseDTO> assignedCourses;
+    private String street;
+    private String city;
+    private String state;
+    private String pinCode;
     
     @Data
     @NoArgsConstructor
