@@ -46,7 +46,7 @@ public class Batch {
 
     // List of days when classes are held (e.g., MON, WED, FRI)
     // Stored as a separate collection table (batch_class_days)
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)
     private List<ClassDay> classDays;
 

@@ -5,6 +5,7 @@ import com.nexus.backend.repository.StudyMaterialRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -28,7 +29,7 @@ public class StudyMaterialService {
             String description,
             String course,
             String batch,
-            String fileType) throws Exception {
+            String fileType) throws IOException {
 
         String uploadDir = "uploads/materials/"; // folder where files are saved on server
         Files.createDirectories(Paths.get(uploadDir)); // create folder if it doesn't exist
@@ -65,8 +66,9 @@ public class StudyMaterialService {
 
     // Deletes a material record from the database by ID
     public void deleteMaterial(Long id) {
-        if (id != null) {
-            repository.deleteById(id);
+        if (id == null) {
+            throw new IllegalArgumentException("Material ID must not be null.");
         }
+        repository.deleteById(id);
     }
 }

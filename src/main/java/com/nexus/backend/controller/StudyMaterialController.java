@@ -3,10 +3,14 @@ package com.nexus.backend.controller;
 
 import com.nexus.backend.model.StudyMaterial;
 import com.nexus.backend.service.StudyMaterialService;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.FileSystemException;
 import java.util.List;
 
 // Handles all HTTP requests related to study materials
@@ -40,11 +44,17 @@ public class StudyMaterialController {
                     batch,
                     fileType
             );
-
-            return ResponseEntity.ok(material); // return saved material on success
-
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage()); // return error message on failure
+            return ResponseEntity.ok(material);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (MaxUploadSizeExceededException e) {
+            return ResponseEntity.badRequest().body("File size exceeds the allowed limit.");
+        } catch (FileSystemException e) {
+            return ResponseEntity.internalServerError().body("File system error: " + e.getReason());
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().body("File processing failed: " + e.getMessage());
+        } catch (DataAccessException e) {
+            return ResponseEntity.internalServerError().body("Database error while saving material.");
         }
     }
 
@@ -63,7 +73,13 @@ public class StudyMaterialController {
     // DELETE /api/materials/{id} - Deletes a material by its ID
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteMaterial(@PathVariable Long id) {
-        service.deleteMaterial(id);
-        return ResponseEntity.ok("Material Deleted Successfully");
+        try {
+            service.deleteMaterial(id);
+            return ResponseEntity.ok("Material Deleted Successfully");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid material ID.");
+        } catch (DataAccessException e) {
+            return ResponseEntity.internalServerError().body("Database error while deleting material.");
+        }
     }
 }

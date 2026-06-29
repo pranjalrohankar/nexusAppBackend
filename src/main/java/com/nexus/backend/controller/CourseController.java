@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
@@ -29,7 +30,10 @@ public class CourseController {
     public ResponseEntity<CourseDto> createCourse(@Valid @RequestBody CourseDto dto) {
         Course saved = service.createCourse(toEntity(dto));
         CourseDto resp = toDto(saved);
-        URI location = URI.create("/api/courses/" + resp.getId());
+        URI location = UriComponentsBuilder
+                .fromPath("/api/courses/{id}")
+                .buildAndExpand(resp.getId())
+                .toUri();
         return ResponseEntity.created(location).body(resp);
     }
 
@@ -93,6 +97,12 @@ public class CourseController {
                 .startDate(c.getStartDate())
                 .endDate(c.getEndDate())
                 .classTimings(c.getClassTimings())
+                .classDays(c.getClassDays())
+                .instructor(c.getInstructor())
+                .syllabusTopics(c.getSyllabusTopics())
+                .whatYouWillLearn(c.getWhatYouWillLearn())
+                .googleMeetLink(c.getGoogleMeetLink())
+                .totalSessions(c.getTotalSessions())
                 .maxCapacity(c.getMaxCapacity())
                 .price(c.getPrice())
                 .status(c.getStatus())
@@ -110,6 +120,12 @@ public class CourseController {
         c.setStartDate(d.getStartDate());
         c.setEndDate(d.getEndDate());
         c.setClassTimings(d.getClassTimings());
+        c.setClassDays(d.getClassDays());
+        c.setInstructor(d.getInstructor());
+        c.setSyllabusTopics(d.getSyllabusTopics());
+        c.setWhatYouWillLearn(d.getWhatYouWillLearn());
+        c.setGoogleMeetLink(d.getGoogleMeetLink());
+        c.setTotalSessions(d.getTotalSessions());
         c.setMaxCapacity(d.getMaxCapacity());
         c.setPrice(d.getPrice());
         c.setStatus(d.getStatus());

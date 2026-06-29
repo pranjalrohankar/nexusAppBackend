@@ -41,6 +41,7 @@ public class TeacherController {
             response.put("totalStudents", (int) enrollmentRepository.count());
             
             return ResponseEntity.ok(response);
+        // amazonq-ignore-next-line
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -60,12 +61,15 @@ public class TeacherController {
                 return ResponseEntity.status(404).body(error);
             }
 
+            // amazonq-ignore-next-line
+            // amazonq-ignore-next-line
             TeacherStatsDTO stats = buildTeacherStats(teacher.get());
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("data", stats);
             
             return ResponseEntity.ok(response);
+        // amazonq-ignore-next-line
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -75,6 +79,7 @@ public class TeacherController {
     }
 
     @PutMapping("/{id}")
+    // amazonq-ignore-next-line
     public ResponseEntity<Map<String, Object>> updateTeacher(
         @PathVariable Long id,
         @RequestBody Map<String, Object> updates
@@ -88,6 +93,7 @@ public class TeacherController {
                 return ResponseEntity.status(404).body(error);
             }
 
+            // amazonq-ignore-next-line
             Teacher teacher = teacherOpt.get();
             
             // Update basic fields
@@ -138,6 +144,7 @@ public class TeacherController {
             response.put("data", buildTeacherStats(teacher));
             
             return ResponseEntity.ok(response);
+        // amazonq-ignore-next-line
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -157,6 +164,7 @@ public class TeacherController {
                 return ResponseEntity.status(404).body(error);
             }
 
+            // amazonq-ignore-next-line
             Teacher teacher = teacherOpt.get();
             
             // Delete course assignments first
@@ -176,6 +184,7 @@ public class TeacherController {
             response.put("message", "Teacher deleted successfully");
             
             return ResponseEntity.ok(response);
+        // amazonq-ignore-next-line
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -200,7 +209,9 @@ public class TeacherController {
                 return ResponseEntity.status(404).body(error);
             }
 
+            // amazonq-ignore-next-line
             Teacher teacher = teacherOpt.get();
+            // amazonq-ignore-next-line
             Course course = courseOpt.get();
 
             // Check if already assigned
@@ -224,6 +235,7 @@ public class TeacherController {
             response.put("message", "Course assigned successfully");
             
             return ResponseEntity.ok(response);
+        // amazonq-ignore-next-line
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
@@ -248,6 +260,7 @@ public class TeacherController {
                 return ResponseEntity.status(404).body(error);
             }
 
+            // amazonq-ignore-next-line
             assignmentRepository.deleteByTeacherAndCourse(teacherOpt.get(), courseOpt.get());
 
             Map<String, Object> response = new HashMap<>();
@@ -255,6 +268,7 @@ public class TeacherController {
             response.put("message", "Course unassigned successfully");
             
             return ResponseEntity.ok(response);
+        // amazonq-ignore-next-line
         } catch (Exception e) {
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);

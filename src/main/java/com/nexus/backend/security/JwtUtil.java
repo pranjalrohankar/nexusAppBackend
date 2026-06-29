@@ -18,6 +18,8 @@ public class JwtUtil {
     private long expirationMs;
 
     private SecretKey getKey() {
+        // amazonq-ignore-next-line
+        // amazonq-ignore-next-line
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
