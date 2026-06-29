@@ -15,13 +15,13 @@ public class EnrollmentController {
 
     private final EnrollmentRepository enrollmentRepository;
 
-    @GetMapping("/course/{courseTitle}")
-    public List<Enrollment> getEnrollmentsByCourse(@PathVariable String courseTitle) {
+    @GetMapping("/course")
+    public List<Enrollment> getEnrollmentsByCourse(@RequestParam String courseTitle) {
         return enrollmentRepository.findByCourseTitle(courseTitle);
     }
 
-    @GetMapping("/count/course/{courseTitle}")
-    public Map<String, Integer> getEnrollmentCount(@PathVariable String courseTitle) {
+    @GetMapping("/count/course")
+    public Map<String, Integer> getEnrollmentCount(@RequestParam String courseTitle) {
         return Map.of("count", enrollmentRepository.countByCourseTitle(courseTitle));
     }
 }
