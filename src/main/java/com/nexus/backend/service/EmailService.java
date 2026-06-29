@@ -49,8 +49,8 @@ public class EmailService {
                 + "</div></div>";
             helper.setText(body, true);
             mailSender.send(message);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send enquiry email: " + e.getMessage());
+        } catch (jakarta.mail.MessagingException e) {
+            throw new RuntimeException("Failed to send enquiry email: " + e.getMessage(), e);
         }
     }
 
@@ -72,8 +72,8 @@ public class EmailService {
             if (body == null) throw new IllegalStateException("Email body cannot be null");
             helper.setText(body, true);
             mailSender.send(message);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send email: " + e.getMessage());
+        } catch (jakarta.mail.MessagingException e) {
+            throw new RuntimeException("Failed to send email: " + e.getMessage(), e);
         }
     }
 
@@ -89,29 +89,28 @@ public class EmailService {
     }
 
     private String buildEmailBody(String name, String role, String email, String password, String course, boolean isNew) {
-        String roleDisplay = role.equals("STUDENT") ? "Student Portal" : "Teacher Portal";
+        String roleDisplay = resolveRoleDisplay(role);
+        String extraRow = resolveExtraRows(role, course);
+        String headline = resolveHeadline(isNew, name);
+        String intro = resolveIntro(isNew, roleDisplay);
+        String credTitle = resolveCredTitle(isNew);
+        String credRows = credRow("Email", email, "#1f2937")
+            + credRow("Password", password, "#1f2937")
+            + credRow("Role", role, "#7B2CBF")
+            + extraRow;
+        return buildCredentialsHtml(headline, intro, credTitle, credRows);
+    }
+
+    private String resolveRoleDisplay(String role) {
+        return role.equals("STUDENT") ? "Student Portal" : "Teacher Portal";
+    }
+
+    private String resolveCredTitle(boolean isNew) {
+        return isNew ? "Your Login Details" : "Your Login Credentials";
+    }
+
+    private String buildCredentialsHtml(String headline, String intro, String credTitle, String credRows) {
         String portalUrl = "http://localhost:8081";
-        String extraRow = "";
-        if (role.equals("STUDENT") && course != null && !course.isBlank()) {
-            extraRow = credRow("Course", course, "#7B2CBF");
-        } else if (role.equals("TEACHER") && course != null && !course.isBlank()) {
-            String[] parts = course.split("\\|", 2);
-            if (parts.length == 2) {
-                extraRow = credRow("Specialization", parts[0], "#7B2CBF")
-                         + credRow("Employment", parts[1], "#7B2CBF");
-            } else {
-                extraRow = credRow("Specialization", parts[0], "#7B2CBF");
-            }
-        }
-
-        String headline = isNew
-            ? "Welcome, " + name + "!"
-            : "New Course Enrolled, " + name + "!";
-        String intro = isNew
-            ? "Your account has been created on the <strong>Nexus " + roleDisplay + "</strong>. Here are your login credentials:"
-            : "You have been enrolled in a new course on the <strong>Nexus " + roleDisplay + "</strong>. Use your existing credentials to login:";
-        String credTitle = isNew ? "Your Login Details" : "Your Login Credentials";
-
         return "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;'>"
             + "<div style='background:#7B2CBF;padding:28px 32px;text-align:center;border-radius:12px 12px 0 0;'>"
             + "<span style='font-size:34px;font-weight:bold;color:#fff;letter-spacing:3px;'>NE<span style='color:#FFB703;'>X</span>US</span>"
@@ -122,12 +121,7 @@ public class EmailService {
             + "<p style='color:#4b5563;font-size:14px;line-height:1.6;margin:0 0 20px;'>" + intro + "</p>"
             + "<div style='background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:16px 20px;margin-bottom:24px;'>"
             + "<p style='margin:0 0 12px;font-size:11px;font-weight:700;color:#7B2CBF;text-transform:uppercase;letter-spacing:1px;'>" + credTitle + "</p>"
-            + "<table cellpadding='0' cellspacing='0' border='0' style='width:100%;border-collapse:collapse;'>"
-            + credRow("Email", email, "#1f2937")
-            + credRow("Password", password, "#1f2937")
-            + credRow("Role", role, "#7B2CBF")
-            + extraRow
-            + "</table>"
+            + "<table cellpadding='0' cellspacing='0' border='0' style='width:100%;border-collapse:collapse;'>" + credRows + "</table>"
             + "</div>"
             + "<a href='" + portalUrl + "' style='display:inline-block;background:#7B2CBF;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:700;font-size:14px;'>Login to Portal</a>"
             + "<p style='color:#9ca3af;font-size:11px;margin-top:20px;border-top:1px solid #f3f4f6;padding-top:14px;'>Please change your password after first login. Contact support@nexus.com for help.</p>"
@@ -135,5 +129,29 @@ public class EmailService {
             + "<div style='background:#f3f4f6;padding:14px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;'>"
             + "<p style='margin:0;color:#9ca3af;font-size:11px;'>2026 Nexus Corporate Training Center LLP. All rights reserved.</p>"
             + "</div></div>";
+    }
+
+    private String resolveExtraRows(String role, String course) {
+        if (course == null || course.isBlank()) return "";
+        if (role.equals("STUDENT")) {
+            return credRow("Course", course, "#7B2CBF");
+        }
+        if (role.equals("TEACHER")) {
+            String[] parts = course.split("\\|", 2);
+            return parts.length == 2
+                ? credRow("Specialization", parts[0], "#7B2CBF") + credRow("Employment", parts[1], "#7B2CBF")
+                : credRow("Specialization", parts[0], "#7B2CBF");
+        }
+        return "";
+    }
+
+    private String resolveHeadline(boolean isNew, String name) {
+        return isNew ? "Welcome, " + name + "!" : "New Course Enrolled, " + name + "!";
+    }
+
+    private String resolveIntro(boolean isNew, String roleDisplay) {
+        return isNew
+            ? "Your account has been created on the <strong>Nexus " + roleDisplay + "</strong>. Here are your login credentials:"
+            : "You have been enrolled in a new course on the <strong>Nexus " + roleDisplay + "</strong>. Use your existing credentials to login:";
     }
 }

@@ -44,6 +44,24 @@ public class Course {
     @Column(name = "class_timings")
     private String classTimings; // e.g. "8:00 PM - 9:30 PM"
 
+    @Column(name = "class_days")
+    private String classDays; // e.g. "Mon, Wed, Fri"
+
+    @Column(name = "instructor")
+    private String instructor;
+
+    @Column(name = "syllabus_topics")
+    private String syllabusTopics;
+
+    @Column(name = "what_you_will_learn")
+    private String whatYouWillLearn;
+
+    @Column(name = "google_meet_link")
+    private String googleMeetLink;
+
+    @Column(name = "total_sessions")
+    private Integer totalSessions;
+
     @Column(name = "max_capacity")
     @PositiveOrZero
     private Integer maxCapacity;

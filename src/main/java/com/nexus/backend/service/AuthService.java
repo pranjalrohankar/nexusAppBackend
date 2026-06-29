@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +29,7 @@ public class AuthService {
             throw new RuntimeException("Invalid email or password");
         }
 
-        String expectedRole = request.getRole().toUpperCase();
+        String expectedRole = request.getRole().toUpperCase(Locale.ROOT);
         if (!user.getRole().name().equals(expectedRole)) {
             throw new RuntimeException("Access denied for role: " + request.getRole());
         }
@@ -37,7 +38,7 @@ public class AuthService {
         user.setLastLogin(now);
         userRepository.save(user);
 
-        String lastLoginStr = now.format(DateTimeFormatter.ofPattern("MMM dd, yyyy - hh:mm a"));
+        String lastLoginStr = now.format(DateTimeFormatter.ofPattern("MMM dd, yyyy - hh:mm a", Locale.ROOT));
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
         return new LoginResponse(token, user.getRole().name(), user.getName(), user.getEmail(), lastLoginStr);
     }

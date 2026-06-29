@@ -32,6 +32,18 @@ public class CourseDto {
 
     private String classTimings; // e.g. "8:00 PM - 9:30 PM"
 
+    private String classDays; // e.g. "Mon, Wed, Fri"
+
+    private String instructor;
+
+    private String syllabusTopics;
+
+    private String whatYouWillLearn;
+
+    private String googleMeetLink;
+
+    private Integer totalSessions;
+
     @PositiveOrZero
     private Integer maxCapacity;
 

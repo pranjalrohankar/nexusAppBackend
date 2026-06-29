@@ -5,8 +5,10 @@ import com.nexus.backend.repository.CourseRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 
 import java.util.List;
 
@@ -20,8 +22,8 @@ public class CourseService {
         this.repository = repository;
     }
 
-    @SuppressWarnings("null")
-    public Course createCourse(Course course) {
+    public Course createCourse(@NonNull Course course) {
+        Assert.hasText(course.getTitle(), "Course title must not be blank");
         return repository.save(course);
     }
 
@@ -50,10 +52,8 @@ public class CourseService {
         return repository.findAll();
     }
 
-    public Course updateCourse(Long id, Course updatedCourse) {
-        if (id == null) {
-            throw new EntityNotFoundException("Course id cannot be null");
-        }
+    public Course updateCourse(@NonNull Long id, @NonNull Course updatedCourse) {
+        Assert.hasText(updatedCourse.getTitle(), "Course title must not be blank");
         Course existing = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Course not found with id: " + id));
 
@@ -64,6 +64,12 @@ public class CourseService {
         existing.setStartDate(updatedCourse.getStartDate());
         existing.setEndDate(updatedCourse.getEndDate());
         existing.setClassTimings(updatedCourse.getClassTimings());
+        existing.setClassDays(updatedCourse.getClassDays());
+        existing.setInstructor(updatedCourse.getInstructor());
+        existing.setSyllabusTopics(updatedCourse.getSyllabusTopics());
+        existing.setWhatYouWillLearn(updatedCourse.getWhatYouWillLearn());
+        existing.setGoogleMeetLink(updatedCourse.getGoogleMeetLink());
+        existing.setTotalSessions(updatedCourse.getTotalSessions());
         existing.setMaxCapacity(updatedCourse.getMaxCapacity());
         existing.setPrice(updatedCourse.getPrice());
         existing.setStatus(updatedCourse.getStatus());
@@ -73,8 +79,8 @@ public class CourseService {
         return repository.save(existing);
     }
 
-    public void deleteCourse(Long id) {
-        if (id == null || !repository.existsById(id)) {
+    public void deleteCourse(@NonNull Long id) {
+        if (!repository.existsById(id)) {
             throw new EntityNotFoundException("Course not found with id: " + id);
         }
         repository.deleteById(id);

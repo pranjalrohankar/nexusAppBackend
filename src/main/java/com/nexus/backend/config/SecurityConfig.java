@@ -31,11 +31,15 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/batches/**").hasRole("ADMIN")
+                .requestMatchers("/api/teachers/**").hasAnyRole("TEACHER", "ADMIN")
                 .requestMatchers("/api/enquiries/**").permitAll()
                 .requestMatchers("/api/materials/**").permitAll()
                 .requestMatchers("/api/courses/**").permitAll()
+                .requestMatchers("/api/enrollments/count/**").permitAll()
                 .requestMatchers("/api/teacher/**").hasAnyRole("TEACHER", "ADMIN")
                 .requestMatchers("/api/student/**").hasAnyRole("STUDENT", "ADMIN")
+                .requestMatchers("/api/enrollments/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
