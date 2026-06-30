@@ -77,6 +77,10 @@ public class UserService {
             if (role == User.Role.STUDENT && req.getCourse() != null && !req.getCourse().isBlank()) {
                 Student s = studentRepository.findByUser(user).orElse(new Student());
                 s.setUser(user);
+                // Always sync name/email/phone from User so student card shows correct data
+                s.setName(user.getName());
+                s.setEmail(user.getEmail());
+                s.setPhone(user.getPhone());
                 if (s.getCourse() == null) s.setCourse(req.getCourse());
                 s.setEnrollmentDate(req.getEnrollmentDate());
                 s.setPaymentStatus(req.getPaymentStatus());

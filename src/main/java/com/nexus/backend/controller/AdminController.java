@@ -155,14 +155,19 @@ public class AdminController {
     }
 
     @GetMapping("/students")
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse> getStudents() {
         List<Map<String, Object>> result = studentRepository.findAll().stream().map(s -> {
             Map<String, Object> m = new HashMap<>();
             m.put("id", s.getId());
             m.put("userId", s.getUser().getId());
-            m.put("name", s.getUser().getName());
-            m.put("email", s.getUser().getEmail());
-            m.put("phone", s.getUser().getPhone() != null ? s.getUser().getPhone() : "");
+            // Always prefer Student fields, fall back to User fields
+            String name = (s.getName() != null && !s.getName().isBlank()) ? s.getName() : s.getUser().getName();
+            String email = (s.getEmail() != null && !s.getEmail().isBlank()) ? s.getEmail() : s.getUser().getEmail();
+            String phone = (s.getPhone() != null && !s.getPhone().isBlank()) ? s.getPhone() : (s.getUser().getPhone() != null ? s.getUser().getPhone() : "");
+            m.put("name", name);
+            m.put("email", email);
+            m.put("phone", phone);
             m.put("active", s.getUser().isActive());
             m.put("course", s.getCourse() != null ? s.getCourse() : "");
             m.put("enrollmentDate", s.getEnrollmentDate() != null ? s.getEnrollmentDate() : "");
@@ -191,6 +196,7 @@ public class AdminController {
 
     @PutMapping("/students/{id}")
     @SuppressWarnings("null")
+    @Transactional
     public ResponseEntity<ApiResponse> updateStudent(@PathVariable Long id, @RequestBody Map<String, String> body) {
         Student s = studentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
@@ -209,6 +215,23 @@ public class AdminController {
         if (body.containsKey("paymentStatus")) s.setPaymentStatus(body.get("paymentStatus"));
         userRepository.save(s.getUser());
         studentRepository.save(s);
+
+        // ── Also update the Enrollment record so the card reflects the change ──
+        List<Enrollment> enrollments = enrollmentRepository.findByStudent(s);
+        if (!enrollments.isEmpty()) {
+            // If a specific course is being updated, match it; otherwise update the first enrollment
+            String targetCourse = body.containsKey("course") ? body.get("course") : null;
+            Enrollment target = enrollments.stream()
+                .filter(e -> targetCourse == null || e.getCourseTitle().equalsIgnoreCase(targetCourse))
+                .findFirst()
+                .orElse(enrollments.get(0));
+            if (body.containsKey("paymentStatus"))
+                target.setPaymentStatus(body.get("paymentStatus"));
+            if (body.containsKey("enrollmentDate"))
+                target.setEnrollmentDate(body.get("enrollmentDate"));
+            enrollmentRepository.save(target);
+        }
+
         return ResponseEntity.ok(ApiResponse.ok("Student updated", null));
     }
 

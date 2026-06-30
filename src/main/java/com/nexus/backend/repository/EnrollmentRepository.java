@@ -18,6 +18,14 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     int countByCourseTitleIn(List<String> courseTitles);
     List<Enrollment> findByCourseTitle(String courseTitle);
 
+    // Case-insensitive fetch with Student AND User joined eagerly
+    @Query("SELECT e FROM Enrollment e JOIN FETCH e.student s LEFT JOIN FETCH s.user WHERE LOWER(TRIM(e.courseTitle)) = LOWER(TRIM(:courseTitle))")
+    List<Enrollment> findByCourseTitleIgnoreCase(@Param("courseTitle") String courseTitle);
+
+    // Count with case-insensitive match
+    @Query("SELECT COUNT(e) FROM Enrollment e WHERE LOWER(TRIM(e.courseTitle)) = LOWER(TRIM(:courseTitle))")
+    int countByCourseTitleIgnoreCase(@Param("courseTitle") String courseTitle);
+
     @Modifying
     @Transactional
     @Query(value = "DELETE FROM student_enrollments WHERE student_id = :studentId", nativeQuery = true)
