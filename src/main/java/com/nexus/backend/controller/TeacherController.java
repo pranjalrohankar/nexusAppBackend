@@ -57,6 +57,53 @@ public class TeacherController {
         }
     }
 
+    @PutMapping("/profile")
+    public ResponseEntity<Map<String, Object>> updateMyProfile(@RequestBody Map<String, Object> updates) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String email = (String) auth.getPrincipal();
+            Optional<User> userOpt = userRepository.findByEmail(email);
+            if (userOpt.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "User not found");
+                return ResponseEntity.status(404).body(error);
+            }
+            Optional<Teacher> teacherOpt = teacherRepository.findByUser(userOpt.get());
+            if (teacherOpt.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "Teacher profile not found");
+                return ResponseEntity.status(404).body(error);
+            }
+            Teacher teacher = teacherOpt.get();
+            if (updates.containsKey("name")) {
+                teacher.setName((String) updates.get("name"));
+                if (teacher.getUser() != null) teacher.getUser().setName((String) updates.get("name"));
+            }
+            if (updates.containsKey("phone")) {
+                teacher.setPhone((String) updates.get("phone"));
+                if (teacher.getUser() != null) teacher.getUser().setPhone((String) updates.get("phone"));
+            }
+            if (updates.containsKey("street")) teacher.setStreet((String) updates.get("street"));
+            if (updates.containsKey("city")) teacher.setCity((String) updates.get("city"));
+            if (updates.containsKey("state")) teacher.setState((String) updates.get("state"));
+            if (updates.containsKey("pinCode")) teacher.setPinCode((String) updates.get("pinCode"));
+            teacherRepository.save(teacher);
+            if (teacher.getUser() != null) userRepository.save(teacher.getUser());
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Profile updated successfully");
+            response.put("data", buildTeacherStats(teacher));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "Failed to update profile: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
+        }
+    }
+
     @GetMapping("/all")
     public ResponseEntity<Map<String, Object>> getAllTeachers() {
         try {
