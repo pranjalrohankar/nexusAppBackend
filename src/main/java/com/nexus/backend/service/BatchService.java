@@ -50,8 +50,8 @@ public class BatchService {
             batchMap.put("status", batch.getStatus());
             batchMap.put("createdAt", batch.getCreatedAt());
             
-            // Get student count from enrollments table for this course
-            int studentCount = enrollmentRepository.countByCourseTitle(batch.getSelectCourse());
+            // Get student count using case-insensitive match
+            int studentCount = enrollmentRepository.countByCourseTitleIgnoreCase(batch.getSelectCourse());
             batchMap.put("studentsCount", studentCount);
             
             return batchMap;
@@ -69,6 +69,10 @@ public class BatchService {
         batch.setStatus(request.getStatus());
         batch.setClassDays(request.getClassDays());
         return batchRepository.save(batch);
+    }
+
+    public Batch getBatchById(Long id) {
+        return batchRepository.findById(id).orElse(null);
     }
 
     public void deleteBatch(Long id) {
