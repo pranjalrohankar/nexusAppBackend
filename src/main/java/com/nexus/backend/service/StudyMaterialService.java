@@ -2,6 +2,10 @@ package com.nexus.backend.service;
 
 import com.nexus.backend.model.StudyMaterial;
 import com.nexus.backend.repository.StudyMaterialRepository;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -12,9 +16,10 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// Service class that handles business logic for study materials
 @Service
 public class StudyMaterialService {
+
+    private static final Logger logger = LoggerFactory.getLogger(StudyMaterialService.class);
 
     private final StudyMaterialRepository repository;
 
@@ -22,7 +27,7 @@ public class StudyMaterialService {
         this.repository = repository;
     }
 
-    // Saves the uploaded file to disk and stores metadata in the database
+    // Upload Study Material
     public StudyMaterial uploadMaterial(
             MultipartFile file,
             String title,
@@ -31,14 +36,21 @@ public class StudyMaterialService {
             String batch,
             String fileType) throws IOException {
 
-        String uploadDir = "uploads/materials/"; // folder where files are saved on server
-        Files.createDirectories(Paths.get(uploadDir)); // create folder if it doesn't exist
+        logger.info("Uploading study material. Title: {}, Course: {}, Batch: {}",
+                title, course, batch);
 
-        String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename(); // unique filename
+        String uploadDir = "uploads/materials/";
+
+        Files.createDirectories(Paths.get(uploadDir));
+
+        String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+
         Path filePath = Paths.get(uploadDir + fileName);
-        Files.write(filePath, file.getBytes()); // write file bytes to disk
 
-        // Build the entity and set all fields
+        Files.write(filePath, file.getBytes());
+
+        logger.info("File saved successfully at: {}", filePath);
+
         StudyMaterial material = new StudyMaterial();
         material.setTitle(title);
         material.setDescription(description);
@@ -47,28 +59,58 @@ public class StudyMaterialService {
         material.setFileType(fileType);
         material.setFileName(fileName);
         material.setFilePath(filePath.toString());
-        material.setUploadedAt(LocalDateTime.now()); // record upload time
+        material.setUploadedAt(LocalDateTime.now());
 
-        return repository.save(material); // save to DB and return
+        StudyMaterial savedMaterial = repository.save(material);
+
+        logger.info("Study material saved successfully with ID: {}",
+                savedMaterial.getId());
+
+        return savedMaterial;
     }
 
-    // Returns all study materials from the database
+    // Get All Study Materials
     public List<StudyMaterial> getAllMaterials() {
-        return repository.findAll();
+
+        logger.info("Fetching all study materials.");
+
+        List<StudyMaterial> materials = repository.findAll();
+
+        logger.info("Total study materials found: {}", materials.size());
+
+        return materials;
     }
 
-    // Returns only materials matching the given course name (case-insensitive)
+    // Get Study Materials By Course
     public List<StudyMaterial> getMaterialsByCourse(String course) {
-        return repository.findAll().stream()
+
+        logger.info("Fetching study materials for course: {}", course);
+
+        List<StudyMaterial> materials = repository.findAll()
+                .stream()
                 .filter(m -> course.equalsIgnoreCase(m.getCourse()))
                 .toList();
+
+        logger.info("Found {} study materials for course: {}",
+                materials.size(), course);
+
+        return materials;
     }
 
-    // Deletes a material record from the database by ID
+    // Delete Study Material
     public void deleteMaterial(Long id) {
+
+        logger.info("Deleting study material with ID: {}", id);
+
         if (id == null) {
+
+            logger.warn("Delete operation failed. Material ID is null.");
+
             throw new IllegalArgumentException("Material ID must not be null.");
         }
+
         repository.deleteById(id);
+
+        logger.info("Study material deleted successfully. ID: {}", id);
     }
 }

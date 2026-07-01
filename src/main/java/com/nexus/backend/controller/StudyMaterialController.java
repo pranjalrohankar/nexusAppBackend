@@ -1,8 +1,11 @@
-
 package com.nexus.backend.controller;
 
 import com.nexus.backend.model.StudyMaterial;
 import com.nexus.backend.service.StudyMaterialService;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,11 +16,13 @@ import java.io.IOException;
 import java.nio.file.FileSystemException;
 import java.util.List;
 
-// Handles all HTTP requests related to study materials
 @RestController
 @RequestMapping("/api/materials")
 @CrossOrigin("*")
 public class StudyMaterialController {
+
+    private static final Logger logger =
+            LoggerFactory.getLogger(StudyMaterialController.class);
 
     private final StudyMaterialService service;
 
@@ -25,7 +30,7 @@ public class StudyMaterialController {
         this.service = service;
     }
 
-    // POST /api/materials/upload - Teacher uploads a file with metadata (title, course, batch, etc.)
+    // Upload Study Material
     @PostMapping("/upload")
     public ResponseEntity<?> uploadMaterial(
             @RequestParam("file") MultipartFile file,
@@ -35,7 +40,11 @@ public class StudyMaterialController {
             @RequestParam("batch") String batch,
             @RequestParam("fileType") String fileType) {
 
+        logger.info("Upload request received. Title: {}, Course: {}, Batch: {}",
+                title, course, batch);
+
         try {
+
             StudyMaterial material = service.uploadMaterial(
                     file,
                     title,
@@ -44,42 +53,101 @@ public class StudyMaterialController {
                     batch,
                     fileType
             );
+
+            logger.info("Study material uploaded successfully. ID: {}", material.getId());
+
             return ResponseEntity.ok(material);
+
         } catch (IllegalArgumentException e) {
+
+            logger.warn("Validation failed: {}", e.getMessage());
+
             return ResponseEntity.badRequest().body(e.getMessage());
+
         } catch (MaxUploadSizeExceededException e) {
-            return ResponseEntity.badRequest().body("File size exceeds the allowed limit.");
+
+            logger.error("File size exceeded allowed limit.", e);
+
+            return ResponseEntity.badRequest()
+                    .body("File size exceeds the allowed limit.");
+
         } catch (FileSystemException e) {
-            return ResponseEntity.internalServerError().body("File system error: " + e.getReason());
+
+            logger.error("File system error: {}", e.getReason(), e);
+
+            return ResponseEntity.internalServerError()
+                    .body("File system error: " + e.getReason());
+
         } catch (IOException e) {
-            return ResponseEntity.internalServerError().body("File processing failed: " + e.getMessage());
+
+            logger.error("File processing failed.", e);
+
+            return ResponseEntity.internalServerError()
+                    .body("File processing failed: " + e.getMessage());
+
         } catch (DataAccessException e) {
-            return ResponseEntity.internalServerError().body("Database error while saving material.");
+
+            logger.error("Database error while saving study material.", e);
+
+            return ResponseEntity.internalServerError()
+                    .body("Database error while saving material.");
         }
     }
 
-    // GET /api/materials - Returns all uploaded study materials (used by admin/teacher)
+    // Get All Materials
     @GetMapping
     public List<StudyMaterial> getAllMaterials() {
-        return service.getAllMaterials();
+
+        logger.info("Fetching all study materials.");
+
+        List<StudyMaterial> materials = service.getAllMaterials();
+
+        logger.info("Returned {} study materials.", materials.size());
+
+        return materials;
     }
 
-    // GET /api/materials/by-course?course=... - Returns materials for a specific course (used by students)
+    // Get Materials By Course
     @GetMapping("/by-course")
     public List<StudyMaterial> getByCourse(@RequestParam String course) {
-        return service.getMaterialsByCourse(course);
+
+        logger.info("Fetching study materials for course: {}", course);
+
+        List<StudyMaterial> materials = service.getMaterialsByCourse(course);
+
+        logger.info("Found {} study materials for course: {}",
+                materials.size(), course);
+
+        return materials;
     }
 
-    // DELETE /api/materials/{id} - Deletes a material by its ID
+    // Delete Material
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteMaterial(@PathVariable Long id) {
+
+        logger.info("Delete request received for material ID: {}", id);
+
         try {
+
             service.deleteMaterial(id);
+
+            logger.info("Study material deleted successfully. ID: {}", id);
+
             return ResponseEntity.ok("Material Deleted Successfully");
+
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Invalid material ID.");
+
+            logger.warn("Invalid material ID: {}", id);
+
+            return ResponseEntity.badRequest()
+                    .body("Invalid material ID.");
+
         } catch (DataAccessException e) {
-            return ResponseEntity.internalServerError().body("Database error while deleting material.");
+
+            logger.error("Database error while deleting material ID: {}", id, e);
+
+            return ResponseEntity.internalServerError()
+                    .body("Database error while deleting material.");
         }
     }
 }
