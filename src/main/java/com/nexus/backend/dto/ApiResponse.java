@@ -1,20 +1,42 @@
 package com.nexus.backend.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import java.time.LocalDateTime;
 
-@Data
-@AllArgsConstructor
-public class ApiResponse {
+public class ApiResponse<T> {
+
     private boolean success;
     private String message;
-    private Object data;
+    private T data;
+    private LocalDateTime timestamp;
 
-    public static ApiResponse ok(String message, Object data) {
-        return new ApiResponse(true, message, data);
+    public ApiResponse(boolean success, String message, T data) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
+        this.timestamp = LocalDateTime.now();
     }
 
-    public static ApiResponse error(String message) {
-        return new ApiResponse(false, message, null);
+    public static <T> ApiResponse<T> ok(String message, T data) {
+        return new ApiResponse<>(true, message, data);
+    }
+
+    public static ApiResponse<Object> error(String message) {
+        return new ApiResponse<>(false, message, null);
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public T getData() {
+        return data;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
     }
 }
