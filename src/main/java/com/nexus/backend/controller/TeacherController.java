@@ -24,6 +24,52 @@ public class TeacherController {
     private final CourseRepository courseRepository;
     private final TeacherCourseAssignmentRepository assignmentRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final com.nexus.backend.repository.BatchRepository batchRepository;
+
+    @GetMapping("/my-batches")
+    public ResponseEntity<Map<String, Object>> getMyBatches() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String email = (String) auth.getPrincipal();
+            Optional<User> userOpt = userRepository.findByEmail(email);
+            if (userOpt.isEmpty()) return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
+            Optional<Teacher> teacherOpt = teacherRepository.findByUser(userOpt.get());
+            if (teacherOpt.isEmpty()) return ResponseEntity.status(404).body(Map.of("success", false, "message", "Teacher not found"));
+
+            String teacherName = teacherOpt.get().getName();
+            List<com.nexus.backend.model.Batch> batches = batchRepository.findByInstructorIgnoreCase(teacherName);
+
+            List<Map<String, Object>> result = batches.stream().map(batch -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("id", batch.getId());
+                m.put("batchName", batch.getBatchName());
+                m.put("selectCourse", batch.getSelectCourse());
+                m.put("instructor", batch.getInstructor());
+                m.put("startDate", batch.getStartDate());
+                m.put("endDate", batch.getEndDate());
+                m.put("classDays", batch.getClassDays());
+                m.put("status", batch.getStatus());
+                int studentCount = enrollmentRepository.countByCourseTitleIgnoreCase(batch.getSelectCourse());
+                m.put("studentsCount", studentCount);
+                // Enrich with course details
+                courseRepository.findAll().stream()
+                    .filter(c -> c.getTitle().equalsIgnoreCase(batch.getSelectCourse()))
+                    .findFirst()
+                    .ifPresent(c -> {
+                        m.put("classTimings", c.getClassTimings());
+                        m.put("duration", c.getDuration());
+                        String link = c.getGoogleMeetLink() != null ? c.getGoogleMeetLink() : c.getMeetLink();
+                        m.put("googleMeetLink", link);
+                        m.put("totalSessions", c.getTotalSessions());
+                    });
+                return m;
+            }).collect(Collectors.toList());
+
+            return ResponseEntity.ok(Map.of("success", true, "data", result));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
 
     @GetMapping("/profile")
     public ResponseEntity<Map<String, Object>> getMyProfile() {
