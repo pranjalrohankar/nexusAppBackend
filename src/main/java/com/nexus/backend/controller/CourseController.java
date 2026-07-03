@@ -88,6 +88,8 @@ public class CourseController {
     // Simple mappers; consider using MapStruct for larger projects
     private CourseDto toDto(Course c) {
         if (c == null) return null;
+        String meetLink = c.getGoogleMeetLink() != null ? c.getGoogleMeetLink()
+                        : c.getMeetLink();
         return CourseDto.builder()
                 .id(c.getId())
                 .title(c.getTitle())
@@ -101,7 +103,7 @@ public class CourseController {
                 .instructor(c.getInstructor())
                 .syllabusTopics(c.getSyllabusTopics())
                 .whatYouWillLearn(c.getWhatYouWillLearn())
-                .googleMeetLink(c.getGoogleMeetLink())
+                .googleMeetLink(meetLink)
                 .totalSessions(c.getTotalSessions())
                 .maxCapacity(c.getMaxCapacity())
                 .price(c.getPrice())
@@ -125,6 +127,7 @@ public class CourseController {
         c.setSyllabusTopics(d.getSyllabusTopics());
         c.setWhatYouWillLearn(d.getWhatYouWillLearn());
         c.setGoogleMeetLink(d.getGoogleMeetLink());
+        c.setMeetLink(d.getGoogleMeetLink());
         c.setTotalSessions(d.getTotalSessions());
         c.setMaxCapacity(d.getMaxCapacity());
         c.setPrice(d.getPrice());
