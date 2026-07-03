@@ -37,12 +37,14 @@ public class SecurityConfig {
                 .requestMatchers("/api/teachers/**").hasAnyRole("TEACHER", "ADMIN")
                 .requestMatchers("/api/enquiries/**").permitAll()
                 .requestMatchers("/api/materials/**").permitAll()
+                .requestMatchers("/api/recordings/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/courses", "/api/courses/**").permitAll()
                 .requestMatchers("/api/courses", "/api/courses/**").hasRole("ADMIN")
                 .requestMatchers("/api/enrollments/count/course").permitAll()
                 .requestMatchers("/api/teacher/**").hasAnyRole("TEACHER", "ADMIN")
                 .requestMatchers("/api/student/**").hasAnyRole("STUDENT", "ADMIN")
                 .requestMatchers("/api/enrollments/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

@@ -1,0 +1,87 @@
+* Host localhost:8080 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+*   Trying [::1]:8080...
+* Established connection to localhost (::1 port 8080) from ::1 port 63977 
+* using HTTP/1.x
+=> Send header, 213 bytes (0xd5)
+0000: POST /api/recordings/upload HTTP/1.1
+0026: Host: localhost:8080
+003c: User-Agent: curl/8.19.0
+0055: Accept: */*
+0062: Content-Length: 883
+0077: Content-Type: multipart/form-data; boundary=--------------------
+00b7: ----6dqoiy5nfyTYLvobzG4uRk
+00d3: 
+=> Send data, 883 bytes (0x373)
+0000: --------------------------6dqoiy5nfyTYLvobzG4uRk
+0032: Content-Disposition: form-data; name="file"; filename="test-vide
+0072: o.mp4"
+007a: Content-Type: video/mp4
+0093: 
+0095: 
+0097: --------------------------6dqoiy5nfyTYLvobzG4uRk
+00c9: Content-Disposition: form-data; name="title"
+00f7: 
+00f9: Test Upload
+0106: --------------------------6dqoiy5nfyTYLvobzG4uRk
+0138: Content-Disposition: form-data; name="description"
+016c: 
+016e: Integration test
+0180: --------------------------6dqoiy5nfyTYLvobzG4uRk
+01b2: Content-Disposition: form-data; name="classDate"
+01e4: 
+01e6: 2026-07-03
+01f2: --------------------------6dqoiy5nfyTYLvobzG4uRk
+0224: Content-Disposition: form-data; name="duration"
+0255: 
+0257: 00:01:00
+0261: --------------------------6dqoiy5nfyTYLvobzG4uRk
+0293: Content-Disposition: form-data; name="course"
+02c2: 
+02c4: Test Course
+02d1: --------------------------6dqoiy5nfyTYLvobzG4uRk
+0303: Content-Disposition: form-data; name="batch"
+0331: 
+0333: Test Batch
+033f: --------------------------6dqoiy5nfyTYLvobzG4uRk--
+* upload completely sent off: 883 bytes
+<= Recv header, 15 bytes (0xf)
+0000: HTTP/1.1 500 
+<= Recv header, 14 bytes (0xe)
+0000: Vary: Origin
+<= Recv header, 37 bytes (0x25)
+0000: Vary: Access-Control-Request-Method
+<= Recv header, 38 bytes (0x26)
+0000: Vary: Access-Control-Request-Headers
+<= Recv header, 33 bytes (0x21)
+0000: X-Content-Type-Options: nosniff
+<= Recv header, 21 bytes (0x15)
+0000: X-XSS-Protection: 0
+<= Recv header, 63 bytes (0x3f)
+0000: Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+<= Recv header, 18 bytes (0x12)
+0000: Pragma: no-cache
+<= Recv header, 12 bytes (0xc)
+0000: Expires: 0
+<= Recv header, 23 bytes (0x17)
+0000: X-Frame-Options: DENY
+<= Recv header, 32 bytes (0x20)
+0000: Content-Type: application/json
+<= Recv header, 28 bytes (0x1c)
+0000: Transfer-Encoding: chunked
+<= Recv header, 37 bytes (0x25)
+0000: Date: Fri, 03 Jul 2026 09:45:26 GMT
+<= Recv header, 19 bytes (0x13)
+0000: Connection: close
+<= Recv header, 2 bytes (0x2)
+0000: 
+<= Recv data, 137 bytes (0x89)
+0000: 83
+0004: {"success":false,"message":"Something went wrong: Please select 
+0044: video file.","data":null,"timestamp":"2026-07-03T15:15:26.397669
+0084: 5"}
+<= Recv data, 5 bytes (0x5)
+0000: 0
+0003: 
+* shutting down connection #0
