@@ -6,7 +6,11 @@ import com.nexus.backend.service.StudyMaterialService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -14,6 +18,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.FileSystemException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 @RestController
@@ -119,6 +125,23 @@ public class StudyMaterialController {
                 materials.size(), course);
 
         return materials;
+    }
+
+    // Download Material
+    @GetMapping("/download/{id}")
+    public ResponseEntity<Resource> downloadMaterial(@PathVariable Long id) throws IOException {
+
+        logger.info("Download request received for material ID: {}", id);
+
+        StudyMaterial material = service.getMaterialById(id);
+        Path filePath = Paths.get(material.getFilePath());
+        Resource resource = new UrlResource(filePath.toUri());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + material.getFileName() + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource);
     }
 
     // Delete Material
