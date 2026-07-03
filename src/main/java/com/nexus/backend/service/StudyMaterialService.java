@@ -39,6 +39,11 @@ public class StudyMaterialService {
         logger.info("Uploading study material. Title: {}, Course: {}, Batch: {}",
                 title, course, batch);
 
+        if (file == null || file.isEmpty()) {
+            logger.warn("Upload failed: uploaded file is missing or empty.");
+            throw new IllegalArgumentException("Uploaded file is required.");
+        }
+
         String uploadDir = "uploads/materials/";
 
         Files.createDirectories(Paths.get(uploadDir));
@@ -58,10 +63,12 @@ public class StudyMaterialService {
         material.setBatch(batch);
         material.setFileType(fileType);
         material.setFileName(fileName);
-        material.setFilePath(filePath.toString());
+        material.setFilePath(filePath.toAbsolutePath().toString());
         material.setUploadedAt(LocalDateTime.now());
 
         StudyMaterial savedMaterial = repository.save(material);
+        savedMaterial.setFileUrl("/api/materials/download/" + savedMaterial.getId());
+        savedMaterial = repository.save(savedMaterial);
 
         logger.info("Study material saved successfully with ID: {}",
                 savedMaterial.getId());
@@ -95,6 +102,18 @@ public class StudyMaterialService {
                 materials.size(), course);
 
         return materials;
+    }
+
+    public StudyMaterial getMaterialById(Long id) {
+        logger.info("Fetching study material by ID: {}", id);
+
+        if (id == null) {
+            logger.warn("Material ID is null.");
+            throw new IllegalArgumentException("Material ID must not be null.");
+        }
+
+        return repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Material not found."));
     }
 
     // Delete Study Material
