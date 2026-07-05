@@ -35,5 +35,9 @@ public class StudyMaterial {
     @Column(length = 1000)
     private String fileUrl;
 
+    private String uploadedByEmail;
+
+    private String uploadedByRole;
+
     private LocalDateTime uploadedAt;
 }

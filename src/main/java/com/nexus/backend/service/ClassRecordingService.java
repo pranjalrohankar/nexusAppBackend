@@ -27,7 +27,9 @@ public class ClassRecordingService {
             LocalDate classDate,
             String duration,
             String course,
-            String batch
+            String batch,
+            String uploadedByEmail,
+            String uploadedByRole
     ) throws IOException {
 
         if (file == null || file.isEmpty()) {
@@ -65,13 +67,27 @@ public class ClassRecordingService {
         recording.setFileUrl("/uploads/recordings/" + fileName);
         recording.setFileSize(file.getSize());
         recording.setFileType(contentType);
+        recording.setUploadedByEmail(uploadedByEmail);
+        recording.setUploadedByRole(uploadedByRole);
         recording.setUploadedAt(LocalDateTime.now());
 
         return repository.save(recording);
     }
 
-    public List<ClassRecording> getAllRecordings() {
-        return repository.findAll();
+    public List<ClassRecording> getAllRecordings(String currentEmail, String currentRole) {
+        List<ClassRecording> recordings = repository.findAll();
+
+        if (currentEmail == null || currentEmail.isBlank()) {
+            return recordings;
+        }
+
+        if ("ADMIN".equalsIgnoreCase(currentRole)) {
+            return recordings;
+        }
+
+        return recordings.stream()
+                .filter(r -> currentEmail.equalsIgnoreCase(r.getUploadedByEmail()))
+                .toList();
     }
 
     public ClassRecording getRecordingById(Long id) {

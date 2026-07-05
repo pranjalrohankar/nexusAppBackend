@@ -34,7 +34,9 @@ public class StudyMaterialService {
             String description,
             String course,
             String batch,
-            String fileType) throws IOException {
+            String fileType,
+            String uploadedByEmail,
+            String uploadedByRole) throws IOException {
 
         logger.info("Uploading study material. Title: {}, Course: {}, Batch: {}",
                 title, course, batch);
@@ -64,6 +66,8 @@ public class StudyMaterialService {
         material.setFileType(fileType);
         material.setFileName(fileName);
         material.setFilePath(filePath.toAbsolutePath().toString());
+        material.setUploadedByEmail(uploadedByEmail);
+        material.setUploadedByRole(uploadedByRole);
         material.setUploadedAt(LocalDateTime.now());
 
         StudyMaterial savedMaterial = repository.save(material);
@@ -77,31 +81,59 @@ public class StudyMaterialService {
     }
 
     // Get All Study Materials
-    public List<StudyMaterial> getAllMaterials() {
+    public List<StudyMaterial> getAllMaterials(String currentEmail, String currentRole) {
 
-        logger.info("Fetching all study materials.");
+        logger.info("Fetching study materials for user: {} with role: {}", currentEmail, currentRole);
 
         List<StudyMaterial> materials = repository.findAll();
 
-        logger.info("Total study materials found: {}", materials.size());
+        if (currentEmail == null || currentEmail.isBlank()) {
+            logger.info("No authenticated user found. Returning all materials.");
+            return materials;
+        }
 
-        return materials;
+        if ("ADMIN".equalsIgnoreCase(currentRole)) {
+            logger.info("Admin request. Returning all materials.");
+            return materials;
+        }
+
+        List<StudyMaterial> filteredMaterials = materials.stream()
+                .filter(m -> currentEmail.equalsIgnoreCase(m.getUploadedByEmail()))
+                .toList();
+
+        logger.info("Total study materials found for user {}: {}", currentEmail, filteredMaterials.size());
+
+        return filteredMaterials;
     }
 
     // Get Study Materials By Course
-    public List<StudyMaterial> getMaterialsByCourse(String course) {
+    public List<StudyMaterial> getMaterialsByCourse(String course, String currentEmail, String currentRole) {
 
-        logger.info("Fetching study materials for course: {}", course);
+        logger.info("Fetching study materials for course: {} by user: {} with role: {}", course, currentEmail, currentRole);
 
         List<StudyMaterial> materials = repository.findAll()
                 .stream()
                 .filter(m -> course.equalsIgnoreCase(m.getCourse()))
                 .toList();
 
-        logger.info("Found {} study materials for course: {}",
-                materials.size(), course);
+        if (currentEmail == null || currentEmail.isBlank()) {
+            logger.info("No authenticated user found. Returning materials for course {}.", course);
+            return materials;
+        }
 
-        return materials;
+        if ("ADMIN".equalsIgnoreCase(currentRole)) {
+            logger.info("Admin request. Returning all materials for course {}.", course);
+            return materials;
+        }
+
+        List<StudyMaterial> filteredMaterials = materials.stream()
+                .filter(m -> currentEmail.equalsIgnoreCase(m.getUploadedByEmail()))
+                .toList();
+
+        logger.info("Found {} study materials for course: {} for user {}",
+                filteredMaterials.size(), course, currentEmail);
+
+        return filteredMaterials;
     }
 
     public StudyMaterial getMaterialById(Long id) {
