@@ -54,6 +54,7 @@ public class AdminController {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> data = new HashMap<>();
+        data.put("id", admin != null ? admin.getId() : null);
         data.put("name", admin != null ? admin.getName() : "Administrator");
         data.put("email", admin != null ? admin.getEmail() : "");
         data.put("createdAt", admin != null && admin.getCreatedAt() != null

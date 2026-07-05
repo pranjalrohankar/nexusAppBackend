@@ -156,4 +156,62 @@ public class EmailService {
             ? "Your account has been created on the <strong>Nexus " + roleDisplay + "</strong>. Here are your login credentials:"
             : "You have been enrolled in a new course on the <strong>Nexus " + roleDisplay + "</strong>. Use your existing credentials to login:";
     }
+
+    public void sendLoginAlert(String adminEmail, String device, String ipAddress, String loginTime) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(adminEmail);
+            helper.setSubject("Nexus Security Alert: New Device Login Detected");
+            String body = "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>"
+                + "<div style='background:#7B2CBF;padding:24px 32px;border-radius:12px 12px 0 0;text-align:center;'>"
+                + "<span style='font-size:28px;font-weight:bold;color:#fff;letter-spacing:3px;'>NE<span style='color:#FFB703;'>X</span>US</span></div>"
+                + "<div style='padding:24px 32px;border:1px solid #e5e7eb;border-top:none;'>"
+                + "<h2 style='color:#1f2937;margin:0 0 12px;'>New Device Login Detected</h2>"
+                + "<p style='color:#4b5563;font-size:14px;'>A login was detected from a new device on your admin account.</p>"
+                + "<table cellpadding='0' cellspacing='0' style='width:100%;border-collapse:collapse;margin-top:16px;'>"
+                + "<tr><td style='padding:8px 0;color:#6b7280;width:100px;'>Device</td><td style='padding:8px 0;font-weight:600;color:#1f2937;'>" + device + "</td></tr>"
+                + "<tr><td style='padding:8px 0;color:#6b7280;'>IP Address</td><td style='padding:8px 0;font-weight:600;color:#1f2937;'>" + ipAddress + "</td></tr>"
+                + "<tr><td style='padding:8px 0;color:#6b7280;'>Time</td><td style='padding:8px 0;font-weight:600;color:#1f2937;'>" + loginTime + "</td></tr>"
+                + "</table>"
+                + "<p style='color:#ef4444;font-size:13px;margin-top:16px;'>If this was not you, please secure your account immediately.</p>"
+                + "</div>"
+                + "<div style='background:#f3f4f6;padding:14px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;'>"
+                + "<p style='margin:0;color:#9ca3af;font-size:11px;'>2026 Nexus Corporate Training Center LLP</p></div></div>";
+            helper.setText(body, true);
+            mailSender.send(message);
+        } catch (jakarta.mail.MessagingException e) {
+            throw new RuntimeException("Failed to send login alert email: " + e.getMessage(), e);
+        }
+    }
+
+    public void sendFailedLoginAlert(String adminEmail, String device, String ipAddress, String time) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(adminEmail);
+            helper.setSubject("Nexus Security Alert: 3 Failed Login Attempts");
+            String body = "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>"
+                + "<div style='background:#EF4444;padding:24px 32px;border-radius:12px 12px 0 0;text-align:center;'>"
+                + "<span style='font-size:28px;font-weight:bold;color:#fff;letter-spacing:3px;'>NE<span style='color:#FFB703;'>X</span>US</span></div>"
+                + "<div style='padding:24px 32px;border:1px solid #e5e7eb;border-top:none;'>"
+                + "<h2 style='color:#ef4444;margin:0 0 12px;'>⚠️ 3 Failed Login Attempts</h2>"
+                + "<p style='color:#4b5563;font-size:14px;'>There have been 3 consecutive failed login attempts on your admin account.</p>"
+                + "<table cellpadding='0' cellspacing='0' style='width:100%;border-collapse:collapse;margin-top:16px;'>"
+                + "<tr><td style='padding:8px 0;color:#6b7280;width:100px;'>Device</td><td style='padding:8px 0;font-weight:600;color:#1f2937;'>" + device + "</td></tr>"
+                + "<tr><td style='padding:8px 0;color:#6b7280;'>IP Address</td><td style='padding:8px 0;font-weight:600;color:#1f2937;'>" + ipAddress + "</td></tr>"
+                + "<tr><td style='padding:8px 0;color:#6b7280;'>Time</td><td style='padding:8px 0;font-weight:600;color:#1f2937;'>" + time + "</td></tr>"
+                + "</table>"
+                + "<p style='color:#ef4444;font-size:13px;margin-top:16px;'>If this was not you, please change your password immediately.</p>"
+                + "</div>"
+                + "<div style='background:#f3f4f6;padding:14px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;'>"
+                + "<p style='margin:0;color:#9ca3af;font-size:11px;'>2026 Nexus Corporate Training Center LLP</p></div></div>";
+            helper.setText(body, true);
+            mailSender.send(message);
+        } catch (jakarta.mail.MessagingException e) {
+            throw new RuntimeException("Failed to send failed login alert email: " + e.getMessage(), e);
+        }
+    }
 }
