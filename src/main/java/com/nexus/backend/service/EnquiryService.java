@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.NoSuchElementException;
+import org.springframework.data.domain.Sort;
 
 @Service
 public class EnquiryService {
@@ -29,16 +31,17 @@ public class EnquiryService {
         this.emailService = emailService;
     }
 
+    // Mark enquiry as read
+    public Enquiry markAsRead(Long id) {
+        Enquiry enquiry = enquiryRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("Enquiry not found: " + id));
+        enquiry.setIsRead(true);
+        return enquiryRepository.save(enquiry);
+    }
+
     // Fetch all enquiries
     public List<Enquiry> getAllEnquiries() {
-
-        logger.info("Fetching all enquiries from the database.");
-
-        List<Enquiry> enquiries = enquiryRepository.findAll();
-
-        logger.info("Successfully fetched {} enquiries.", enquiries.size());
-
-        return enquiries;
+        return enquiryRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
     }
 
     // Save enquiry
@@ -73,6 +76,7 @@ public class EnquiryService {
         enquiry.setMessage(request.getMessage());
         enquiry.setCourse(request.getCourse());
         enquiry.setTermsAccepted(request.isTermsAccepted());
+        enquiry.setSource(request.getSource());
 
         logger.info("Saving enquiry for student: {}", enquiry.getFullName());
 

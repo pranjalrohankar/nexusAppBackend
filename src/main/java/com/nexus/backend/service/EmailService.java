@@ -28,6 +28,7 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, false, charset);
             helper.setFrom(safeFromEmail);
             helper.setTo(safeAdminEmail);
+            helper.setReplyTo(enquiry.getEmail());
             String fullName = enquiry.getFullName() != null ? enquiry.getFullName() : "Unknown";
             helper.setSubject("New Enquiry from " + fullName);
             String body = "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'>"
@@ -42,6 +43,7 @@ public class EmailService {
                 + "<tr><td style='padding:8px 0;color:#6b7280;'>Phone</td><td style='padding:8px 0;font-weight:600;color:#1f2937;'>" + enquiry.getPhoneNumber() + "</td></tr>"
                 + "<tr><td style='padding:8px 0;color:#6b7280;'>Course</td><td style='padding:8px 0;font-weight:600;color:#7B2CBF;'>" + (enquiry.getCourse() != null ? enquiry.getCourse() : "Not specified") + "</td></tr>"
                 + "<tr><td style='padding:8px 0;color:#6b7280;vertical-align:top;'>Message</td><td style='padding:8px 0;color:#1f2937;'>" + (enquiry.getMessage() != null ? enquiry.getMessage() : "-") + "</td></tr>"
+                + "<tr><td style='padding:8px 0;color:#6b7280;'>Source</td><td style='padding:8px 0;font-weight:600;color:#1f2937;'>" + (enquiry.getSource() != null ? enquiry.getSource() : "Not specified") + "</td></tr>"
                 + "</table>"
                 + "</div>"
                 + "<div style='background:#f3f4f6;padding:14px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;'>"

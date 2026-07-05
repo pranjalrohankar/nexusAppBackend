@@ -1,0 +1,4 @@
+ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS source VARCHAR(100);
+ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS created_at TIMESTAMP;
+ALTER TABLE enquiries ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false;
+UPDATE enquiries SET is_read = false WHERE is_read IS NULL;
