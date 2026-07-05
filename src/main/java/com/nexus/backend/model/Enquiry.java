@@ -1,13 +1,10 @@
 package com.nexus.backend.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
 /**
  * Entity representing a student enquiry submitted via the Enquiry Form.
@@ -44,4 +41,20 @@ public class Enquiry {
 
     // Whether the enquirer agreed to Terms & Conditions (must be true to submit)
     private boolean termsAccepted;
+
+    // How the enquirer found us: website, whatsapp, referral
+    private String source;
+
+    // Timestamp when enquiry was submitted
+    private LocalDateTime createdAt;
+
+    // Whether admin has read/viewed this enquiry
+    @Column(name = "is_read")
+    private Boolean isRead = false;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (isRead == null) isRead = false;
+    }
 }
