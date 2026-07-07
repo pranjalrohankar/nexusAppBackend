@@ -7,6 +7,7 @@ import com.nexus.backend.service.EnquiryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -39,13 +40,12 @@ public class EnquiryController {
     // GET /api/enquiries - Admin fetches all enquiries
     @GetMapping
     public List<Enquiry> getAllEnquiries() {
+        return enquiryService.getAllEnquiries();
+    }
 
-        logger.info("Fetching all enquiries.");
-
-        List<Enquiry> enquiries = enquiryService.getAllEnquiries();
-
-        logger.info("Fetched {} enquiries.", enquiries.size());
-
-        return enquiries;
+    // PATCH /api/enquiries/{id}/read - Mark enquiry as read
+    @PatchMapping("/{id}/read")
+    public ResponseEntity<Enquiry> markAsRead(@PathVariable Long id) {
+        return ResponseEntity.ok(enquiryService.markAsRead(id));
     }
 }
