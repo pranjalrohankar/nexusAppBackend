@@ -393,6 +393,11 @@ public class TeacherController {
 
     private TeacherStatsDTO buildTeacherStats(Teacher teacher) {
         List<TeacherCourseAssignment> assignments = assignmentRepository.findByTeacher(teacher);
+
+        // Collect course titles: from explicit assignments + from batches assigned to this teacher
+        Set<String> courseTitlesFromBatches = batchRepository.findByInstructorIgnoreCase(teacher.getName())
+            .stream().map(b -> b.getSelectCourse()).filter(Objects::nonNull).collect(Collectors.toSet());
+
         List<TeacherStatsDTO.CourseDTO> courseDTOs = assignments.stream()
             .map(a -> TeacherStatsDTO.CourseDTO.builder()
                 .courseId(a.getCourse().getId())
@@ -401,15 +406,26 @@ public class TeacherController {
                 .build())
             .collect(Collectors.toList());
 
-        int studentsCount = 0;
-        if (!assignments.isEmpty()) {
-            List<String> courseTitles = assignments.stream()
-                .map(a -> a.getCourse().getTitle())
+        // If no explicit assignments, build courseDTOs from batch course titles
+        if (courseDTOs.isEmpty() && !courseTitlesFromBatches.isEmpty()) {
+            courseDTOs = courseRepository.findAll().stream()
+                .filter(c -> courseTitlesFromBatches.stream()
+                    .anyMatch(t -> t.equalsIgnoreCase(c.getTitle())))
+                .map(c -> TeacherStatsDTO.CourseDTO.builder()
+                    .courseId(c.getId())
+                    .title(c.getTitle())
+                    .category(c.getCategory())
+                    .build())
                 .collect(Collectors.toList());
-            studentsCount = enrollmentRepository.countByCourseTitleIn(courseTitles);
         }
 
-        String status = "Active";
+        // Merge all course titles for student count
+        Set<String> allCourseTitles = new HashSet<>();
+        courseDTOs.forEach(c -> allCourseTitles.add(c.getTitle()));
+        allCourseTitles.addAll(courseTitlesFromBatches);
+
+        int studentsCount = allCourseTitles.isEmpty() ? 0
+            : enrollmentRepository.countByCourseTitleIn(new ArrayList<>(allCourseTitles));
 
         return TeacherStatsDTO.builder()
             .teacherId(teacher.getId())
@@ -417,12 +433,12 @@ public class TeacherController {
             .email(teacher.getEmail())
             .phone(teacher.getPhone())
             .joinDate(teacher.getJoinDate())
-            .status(status)
+            .status("Active")
             .qualification(teacher.getQualification())
             .experience(teacher.getExperience())
             .specialization(teacher.getSpecialization())
             .employmentType(teacher.getEmploymentType())
-            .coursesCount(assignments.size())
+            .coursesCount(courseDTOs.size())
             .studentsCount(studentsCount)
             .assignedCourses(courseDTOs)
             .street(teacher.getStreet())
