@@ -7,6 +7,7 @@ import com.nexus.backend.model.Enrollment;
 import com.nexus.backend.model.Student;
 import com.nexus.backend.model.Teacher;
 import com.nexus.backend.model.User;
+import com.nexus.backend.repository.BatchRepository;
 import com.nexus.backend.repository.CourseRepository;
 import com.nexus.backend.repository.EnrollmentRepository;
 import com.nexus.backend.repository.StudentRepository;
@@ -38,6 +39,7 @@ public class AdminController {
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final CourseRepository courseRepository;
+    private final BatchRepository batchRepository;
 
     @GetMapping("/profile")
     @Transactional(readOnly = true)
@@ -54,6 +56,7 @@ public class AdminController {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> data = new HashMap<>();
+        data.put("id", admin != null ? admin.getId() : null);
         data.put("name", admin != null ? admin.getName() : "Administrator");
         data.put("email", admin != null ? admin.getEmail() : "");
         data.put("createdAt", admin != null && admin.getCreatedAt() != null
@@ -104,7 +107,7 @@ public class AdminController {
                 String db = b.getEnrollmentDate() != null ? b.getEnrollmentDate() : "";
                 return db.compareTo(da);
             })
-            .limit(5)
+            .limit(3)
             .map(e -> {
                 Map<String, Object> m = new HashMap<>();
                 m.put("id", e.getId());
@@ -115,13 +118,24 @@ public class AdminController {
                 return m;
             }).collect(Collectors.toList());
 
-        List<Map<String, Object>> classesToday = courseRepository.findByStatus(Course.Status.ACTIVE).stream()
-            .filter(c -> c.getClassTimings() != null && !c.getClassTimings().isBlank())
-            .map(c -> {
+        // Filter batches by today's day of week
+        com.nexus.backend.enums.ClassDay todayDay = com.nexus.backend.enums.ClassDay.valueOf(
+            java.time.LocalDate.now().getDayOfWeek().name().substring(0, 3));
+        List<Map<String, Object>> classesToday = batchRepository.findAll().stream()
+            .filter(b -> b.getStatus() == com.nexus.backend.enums.BatchStatus.ACTIVE
+                && b.getClassDays() != null && b.getClassDays().contains(todayDay))
+            .map(b -> {
                 Map<String, Object> m = new HashMap<>();
-                m.put("id", c.getId());
-                m.put("course", c.getTitle());
-                m.put("time", c.getClassTimings());
+                m.put("id", b.getId());
+                m.put("course", b.getSelectCourse());
+                m.put("instructor", b.getInstructor() != null ? b.getInstructor() : "");
+                // Get class timings from the matching course
+                String timings = courseRepository.findAll().stream()
+                    .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(b.getSelectCourse())
+                        && c.getClassTimings() != null && !c.getClassTimings().isBlank())
+                    .map(Course::getClassTimings).findFirst().orElse("");
+                m.put("time", timings);
+                m.put("studentsCount", enrollmentRepository.countByCourseTitleIgnoreCase(b.getSelectCourse()));
                 return m;
             }).collect(Collectors.toList());
 

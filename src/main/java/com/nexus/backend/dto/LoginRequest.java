@@ -16,4 +16,6 @@ public class LoginRequest {
 
     @NotBlank
     private String role; // student | teacher | admin
+
+    private String deviceFingerprint; // optional unique device ID from client
 }
