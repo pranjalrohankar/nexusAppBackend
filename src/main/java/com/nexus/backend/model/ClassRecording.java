@@ -46,5 +46,9 @@ public class ClassRecording {
 
     private String fileType;
 
+    private String uploadedByEmail;
+
+    private String uploadedByRole;
+
     private LocalDateTime uploadedAt;
 }

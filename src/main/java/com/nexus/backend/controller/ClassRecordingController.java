@@ -5,6 +5,8 @@ import com.nexus.backend.service.ClassRecordingService;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -46,6 +48,12 @@ public class ClassRecordingController {
 
     ) throws IOException {
 
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentEmail = auth != null ? auth.getName() : null;
+        String currentRole = auth != null && !auth.getAuthorities().isEmpty()
+                ? auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
+                : null;
+
         ClassRecording recording = recordingService.uploadRecording(
                 file,
                 title,
@@ -53,7 +61,9 @@ public class ClassRecordingController {
                 classDate,
                 duration,
                 course,
-                batch
+                batch,
+                currentEmail,
+                currentRole
         );
 
         return ResponseEntity.ok(recording);
@@ -62,7 +72,13 @@ public class ClassRecordingController {
     // Get All Recordings
     @GetMapping
     public ResponseEntity<List<ClassRecording>> getAllRecordings() {
-        return ResponseEntity.ok(recordingService.getAllRecordings());
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentEmail = auth != null ? auth.getName() : null;
+        String currentRole = auth != null && !auth.getAuthorities().isEmpty()
+                ? auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
+                : null;
+
+        return ResponseEntity.ok(recordingService.getAllRecordings(currentEmail, currentRole));
     }
 
     // Get Recording By ID

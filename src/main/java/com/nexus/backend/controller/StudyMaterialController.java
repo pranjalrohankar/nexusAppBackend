@@ -12,6 +12,8 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
@@ -51,13 +53,21 @@ public class StudyMaterialController {
 
         try {
 
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String currentEmail = auth != null ? auth.getName() : null;
+            String currentRole = auth != null && !auth.getAuthorities().isEmpty()
+                    ? auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
+                    : null;
+
             StudyMaterial material = service.uploadMaterial(
                     file,
                     title,
                     description,
                     course,
                     batch,
-                    fileType
+                    fileType,
+                    currentEmail,
+                    currentRole
             );
 
             logger.info("Study material uploaded successfully. ID: {}", material.getId());
@@ -104,9 +114,15 @@ public class StudyMaterialController {
     @GetMapping
     public List<StudyMaterial> getAllMaterials() {
 
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentEmail = auth != null ? auth.getName() : null;
+        String currentRole = auth != null && !auth.getAuthorities().isEmpty()
+                ? auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
+                : null;
+
         logger.info("Fetching all study materials.");
 
-        List<StudyMaterial> materials = service.getAllMaterials();
+        List<StudyMaterial> materials = service.getAllMaterials(currentEmail, currentRole);
 
         logger.info("Returned {} study materials.", materials.size());
 
@@ -117,9 +133,15 @@ public class StudyMaterialController {
     @GetMapping("/by-course")
     public List<StudyMaterial> getByCourse(@RequestParam String course) {
 
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentEmail = auth != null ? auth.getName() : null;
+        String currentRole = auth != null && !auth.getAuthorities().isEmpty()
+                ? auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
+                : null;
+
         logger.info("Fetching study materials for course: {}", course);
 
-        List<StudyMaterial> materials = service.getMaterialsByCourse(course);
+        List<StudyMaterial> materials = service.getMaterialsByCourse(course, currentEmail, currentRole);
 
         logger.info("Found {} study materials for course: {}",
                 materials.size(), course);
