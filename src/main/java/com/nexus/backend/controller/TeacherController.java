@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.LinkedHashSet;
 import java.util.stream.Collectors;
 
 @RestController
@@ -25,6 +26,76 @@ public class TeacherController {
     private final TeacherCourseAssignmentRepository assignmentRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final com.nexus.backend.repository.BatchRepository batchRepository;
+
+    @GetMapping("/my-courses-batches")
+    public ResponseEntity<Map<String, Object>> getMyCoursesBatches(
+            @RequestParam(required = false) String course) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String email = (String) auth.getPrincipal();
+            Optional<User> userOpt = userRepository.findByEmail(email);
+            if (userOpt.isEmpty()) return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
+            Optional<Teacher> teacherOpt = teacherRepository.findByUser(userOpt.get());
+            if (teacherOpt.isEmpty()) return ResponseEntity.status(404).body(Map.of("success", false, "message", "Teacher not found"));
+
+            Teacher teacher = teacherOpt.get();
+            String teacherName = teacher.getName();
+
+            // Collect assigned course titles from explicit assignments
+            List<TeacherCourseAssignment> assignments = assignmentRepository.findByTeacher(teacher);
+            Set<String> courseTitles = assignments.stream()
+                .map(a -> a.getCourse().getTitle())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+            // Also include courses from batches assigned to this teacher
+            batchRepository.findByInstructorIgnoreCase(teacherName).stream()
+                .map(b -> b.getSelectCourse())
+                .filter(Objects::nonNull)
+                .forEach(courseTitles::add);
+
+            // Build course list with ids
+            List<Map<String, Object>> courseList = courseRepository.findAll().stream()
+                .filter(c -> courseTitles.stream().anyMatch(t -> t.equalsIgnoreCase(c.getTitle())))
+                .map(c -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", c.getId());
+                    m.put("title", c.getTitle());
+                    return m;
+                })
+                .collect(Collectors.toList());
+
+            // Build batch list filtered by course if provided
+            List<Map<String, Object>> batchList;
+            if (course != null && !course.isBlank()) {
+                batchList = batchRepository
+                    .findByInstructorIgnoreCaseAndSelectCourseIgnoreCase(teacherName, course)
+                    .stream().map(b -> {
+                        Map<String, Object> m = new HashMap<>();
+                        m.put("id", b.getId());
+                        m.put("batchName", b.getBatchName());
+                        m.put("selectCourse", b.getSelectCourse());
+                        return m;
+                    }).collect(Collectors.toList());
+            } else {
+                batchList = batchRepository.findByInstructorIgnoreCase(teacherName)
+                    .stream().map(b -> {
+                        Map<String, Object> m = new HashMap<>();
+                        m.put("id", b.getId());
+                        m.put("batchName", b.getBatchName());
+                        m.put("selectCourse", b.getSelectCourse());
+                        return m;
+                    }).collect(Collectors.toList());
+            }
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "courses", courseList,
+                "batches", batchList
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
 
     @GetMapping("/my-batches")
     public ResponseEntity<Map<String, Object>> getMyBatches() {
