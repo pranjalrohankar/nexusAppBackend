@@ -33,27 +33,23 @@ public class ClassRecordingService {
     ) throws IOException {
 
         if (file == null || file.isEmpty()) {
-            String details = file == null ? "null" : "size=" + file.getSize() + "; name=" + file.getOriginalFilename();
-            throw new IllegalArgumentException("Please select video file. File details: " + details);
+            throw new IllegalArgumentException("Please select a video file.");
         }
 
         String contentType = file.getContentType();
-
         if (!isAllowedVideo(contentType)) {
             throw new IllegalArgumentException("Only MP4, MKV, MOV and AVI videos are allowed.");
         }
 
         String uploadDir = "uploads/recordings/";
-
         Files.createDirectories(Paths.get(uploadDir));
 
-        String originalFileName = file.getOriginalFilename();
-        String safeFileName = originalFileName.replaceAll("\\s+", "_");
+        String safeFileName = file.getOriginalFilename().replaceAll("\\s+", "_");
         String fileName = System.currentTimeMillis() + "_" + safeFileName;
-
         Path filePath = Paths.get(uploadDir + fileName);
 
-        Files.write(filePath, file.getBytes());
+        // Stream directly to disk — no RAM load, works for 1-2 hour videos
+        file.transferTo(filePath.toAbsolutePath());
 
         ClassRecording recording = new ClassRecording();
         recording.setTitle(title);
@@ -63,7 +59,7 @@ public class ClassRecordingService {
         recording.setCourse(course);
         recording.setBatch(batch);
         recording.setFileName(fileName);
-        recording.setFilePath(filePath.toString());
+        recording.setFilePath(filePath.toString());  // relative path — consistent
         recording.setFileUrl("/uploads/recordings/" + fileName);
         recording.setFileSize(file.getSize());
         recording.setFileType(contentType);
@@ -76,15 +72,8 @@ public class ClassRecordingService {
 
     public List<ClassRecording> getAllRecordings(String currentEmail, String currentRole) {
         List<ClassRecording> recordings = repository.findAll();
-
-        if (currentEmail == null || currentEmail.isBlank()) {
-            return recordings;
-        }
-
-        if ("ADMIN".equalsIgnoreCase(currentRole)) {
-            return recordings;
-        }
-
+        if (currentEmail == null || currentEmail.isBlank()) return recordings;
+        if ("ADMIN".equalsIgnoreCase(currentRole)) return recordings;
         return recordings.stream()
                 .filter(r -> currentEmail.equalsIgnoreCase(r.getUploadedByEmail()))
                 .toList();
@@ -99,17 +88,23 @@ public class ClassRecordingService {
         ClassRecording recording = getRecordingById(id);
 
         if (recording.getFilePath() != null) {
-            Files.deleteIfExists(Paths.get(recording.getFilePath()));
+            // Try the stored path first, then try as relative from working dir
+            Path p = Paths.get(recording.getFilePath());
+            if (!Files.deleteIfExists(p)) {
+                // fallback: try relative path
+                Files.deleteIfExists(Paths.get("uploads/recordings/" + recording.getFileName()));
+            }
         }
 
         repository.deleteById(id);
     }
 
-    private boolean isAllowedVideo(String contentType) {
-        if (contentType == null) {
-            return false;
-        }
+    public void deleteAllRecordings() {
+        repository.deleteAll();
+    }
 
+    private boolean isAllowedVideo(String contentType) {
+        if (contentType == null) return false;
         return contentType.equals("video/mp4")
                 || contentType.equals("video/x-matroska")
                 || contentType.equals("video/quicktime")

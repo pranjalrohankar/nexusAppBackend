@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface BatchRepository extends JpaRepository<Batch, Long> {
     List<Batch> findByInstructorIgnoreCase(String instructor);
+    List<Batch> findByInstructorIgnoreCaseAndSelectCourseIgnoreCase(String instructor, String selectCourse);
 }
