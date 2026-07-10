@@ -59,13 +59,13 @@ public class CourseController {
     }
 
     @GetMapping("/active")
-    public ResponseEntity<ApiResponse> active() {
+    public ResponseEntity<ApiResponse<List<CourseDto>>> active() {
         List<CourseDto> list = service.findByStatus(Course.Status.ACTIVE).stream().map(this::toDto).collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.ok("Active courses fetched", list));
     }
 
     @GetMapping("/all")
-    public ResponseEntity<ApiResponse> all() {
+    public ResponseEntity<ApiResponse<List<CourseDto>>> all() {
         List<CourseDto> list = service.listAllCourses().stream().map(this::toDto).collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.ok("All courses fetched", list));
     }
