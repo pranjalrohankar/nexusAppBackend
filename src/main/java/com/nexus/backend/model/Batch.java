@@ -56,4 +56,7 @@ public class Batch {
 
     // Timestamp of when this batch record was created (auto-set to now)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    // Class timing string e.g. "2:00 PM - 3:30 PM"
+    private String classTimings;
 }
