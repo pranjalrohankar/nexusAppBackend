@@ -3,6 +3,7 @@ package com.nexus.backend.controller;
 import com.nexus.backend.dto.ApiResponse;
 import com.nexus.backend.dto.CourseDto;
 import com.nexus.backend.model.Course;
+import com.nexus.backend.repository.EnrollmentRepository;
 import com.nexus.backend.service.CourseService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -20,9 +21,11 @@ import java.util.stream.Collectors;
 public class CourseController {
 
     private final CourseService service;
+    private final EnrollmentRepository enrollmentRepository;
 
-    public CourseController(CourseService service) {
+    public CourseController(CourseService service, EnrollmentRepository enrollmentRepository) {
         this.service = service;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     @PostMapping
@@ -108,6 +111,7 @@ public class CourseController {
                 .maxCapacity(c.getMaxCapacity())
                 .price(c.getPrice())
                 .status(c.getStatus())
+                .enrollmentCount(enrollmentRepository.countByCourseTitleIgnoreCase(c.getTitle()))
                 .build();
     }
 

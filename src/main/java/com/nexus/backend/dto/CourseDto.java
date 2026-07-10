@@ -54,4 +54,6 @@ public class CourseDto {
     private BigDecimal price;
 
     private Course.Status status;
+
+    private Integer enrollmentCount;
 }
