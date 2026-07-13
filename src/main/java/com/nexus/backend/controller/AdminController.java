@@ -214,9 +214,13 @@ public class AdminController {
     public ResponseEntity<ApiResponse> updateStudent(@PathVariable Long id, @RequestBody Map<String, String> body) {
         Student s = studentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
-        if (body.containsKey("firstName") && body.containsKey("lastName"))
-            s.getUser().setName(body.get("firstName") + " " + body.get("lastName"));
-        if (body.containsKey("phone")) s.getUser().setPhone(body.get("phone"));
+        if (body.containsKey("firstName") && body.containsKey("lastName")) {
+            String fullName = body.get("firstName") + " " + body.get("lastName");
+            s.getUser().setName(fullName);
+            s.setName(fullName); // sync Student.name so card reflects change
+        }
+        if (body.containsKey("phone")) { s.getUser().setPhone(body.get("phone")); s.setPhone(body.get("phone")); }
+        if (body.containsKey("email")) { s.getUser().setEmail(body.get("email")); s.setEmail(body.get("email")); }
         if (body.containsKey("dob")) s.setDob(body.get("dob"));
         if (body.containsKey("street")) s.setStreet(body.get("street"));
         if (body.containsKey("city")) s.setCity(body.get("city"));
@@ -247,6 +251,27 @@ public class AdminController {
         }
 
         return ResponseEntity.ok(ApiResponse.ok("Student updated", null));
+    }
+
+    @PostMapping("/students/{id}/enroll")
+    @Transactional
+    public ResponseEntity<ApiResponse> enrollStudentInCourse(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        Student s = studentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+        String courseTitle = body.get("courseTitle");
+        if (courseTitle == null || courseTitle.isBlank())
+            return ResponseEntity.badRequest().body(ApiResponse.error("courseTitle is required"));
+        if (enrollmentRepository.existsByStudentAndCourseTitle(s, courseTitle))
+            return ResponseEntity.badRequest().body(ApiResponse.error("Student is already enrolled in this course"));
+        Enrollment e = new Enrollment();
+        e.setStudent(s);
+        e.setCourseTitle(courseTitle);
+        e.setEnrollmentDate(body.getOrDefault("enrollmentDate", java.time.LocalDate.now().toString()));
+        e.setPaymentStatus(body.getOrDefault("paymentStatus", "Pending"));
+        enrollmentRepository.save(e);
+        return ResponseEntity.ok(ApiResponse.ok("Student enrolled in " + courseTitle, null));
     }
 
     @DeleteMapping("/students/{id}")
