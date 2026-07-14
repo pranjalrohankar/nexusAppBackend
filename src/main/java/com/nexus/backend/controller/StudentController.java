@@ -34,6 +34,46 @@ public class StudentController {
         return studentRepository.findByUser(userOpt.get()).orElse(null);
     }
 
+    /** Student self-update: name, phone, city, state only */
+    @PutMapping("/profile")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> updateProfile(@RequestBody Map<String, String> body) {
+        Student student = getCurrentStudent();
+        if (student == null) return ResponseEntity.status(401).build();
+        if (body.containsKey("firstName") && body.containsKey("lastName")) {
+            String fullName = body.get("firstName") + " " + body.get("lastName");
+            student.setName(fullName);
+            student.getUser().setName(fullName);
+        }
+        if (body.containsKey("phone")) { student.setPhone(body.get("phone")); student.getUser().setPhone(body.get("phone")); }
+        if (body.containsKey("city")) student.setCity(body.get("city"));
+        if (body.containsKey("state")) student.setState(body.get("state"));
+        userRepository.save(student.getUser());
+        studentRepository.save(student);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Profile updated successfully"));
+    }
+
+    /** Returns the logged-in student's profile */
+    @GetMapping("/profile")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getProfile() {
+        Student student = getCurrentStudent();
+        if (student == null) return ResponseEntity.status(401).build();
+        User user = student.getUser();
+        Map<String, Object> dto = new HashMap<>();
+        dto.put("id", student.getId());
+        dto.put("name", student.getName() != null && !student.getName().isBlank() ? student.getName() : user.getName());
+        dto.put("email", student.getEmail() != null && !student.getEmail().isBlank() ? student.getEmail() : user.getEmail());
+        dto.put("phone", student.getPhone() != null ? student.getPhone() : (user.getPhone() != null ? user.getPhone() : ""));
+        dto.put("city", student.getCity() != null ? student.getCity() : "");
+        dto.put("state", student.getState() != null ? student.getState() : "");
+        dto.put("street", student.getStreet() != null ? student.getStreet() : "");
+        dto.put("pinCode", student.getPinCode() != null ? student.getPinCode() : "");
+        dto.put("joinedDate", user.getCreatedAt() != null
+            ? user.getCreatedAt().format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy")) : "");
+        return ResponseEntity.ok(Map.of("success", true, "data", dto));
+    }
+
     /** Returns enrolled courses with batch & status info */
     @GetMapping("/enrollments")
     @Transactional(readOnly = true)
