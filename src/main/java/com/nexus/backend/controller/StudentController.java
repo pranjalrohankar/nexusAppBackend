@@ -2,7 +2,9 @@ package com.nexus.backend.controller;
 
 import com.nexus.backend.model.*;
 import com.nexus.backend.repository.*;
+import com.nexus.backend.service.EmailService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,6 +27,11 @@ public class StudentController {
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
 
+    private final EmailService emailService;
+
+    @Value("${nexus.enquiry.admin-email:jadhavruchita27@gmail.com}")
+    private String adminEmail;
+
     private Student getCurrentStudent() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) return null;
@@ -32,6 +39,23 @@ public class StudentController {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) return null;
         return studentRepository.findByUser(userOpt.get()).orElse(null);
+    }
+
+    /** Student sends a support message — auto-fills name/email/phone from JWT */
+    @PostMapping("/support-message")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> sendSupportMessage(@RequestBody Map<String, String> body) {
+        Student student = getCurrentStudent();
+        if (student == null) return ResponseEntity.status(401).build();
+        String subject = body.get("subject");
+        String message = body.get("message");
+        if (subject == null || subject.isBlank() || message == null || message.isBlank())
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Subject and message are required"));
+        String name = student.getName() != null ? student.getName() : student.getUser().getName();
+        String email = student.getEmail() != null ? student.getEmail() : student.getUser().getEmail();
+        String phone = student.getPhone() != null ? student.getPhone() : (student.getUser().getPhone() != null ? student.getUser().getPhone() : "");
+        emailService.sendSupportMessage(adminEmail, name, email, phone, subject, message);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Message sent successfully"));
     }
 
     /** Student self-update: name, phone, city, state only */
