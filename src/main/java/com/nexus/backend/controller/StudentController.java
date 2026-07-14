@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import java.util.Optional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,6 +27,7 @@ public class StudentController {
     private final BatchRepository batchRepository;
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
+    private final SecuritySettingsRepository securitySettingsRepository;
 
     private final EmailService emailService;
 
@@ -39,6 +41,46 @@ public class StudentController {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isEmpty()) return null;
         return studentRepository.findByUser(userOpt.get()).orElse(null);
+    }
+
+    /** Called on login/logout to update online status */
+    @PutMapping("/activity-status")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> setActivityStatus(@RequestBody Map<String, Object> body) {
+        Student student = getCurrentStudent();
+        if (student == null) return ResponseEntity.status(401).build();
+        boolean online = Boolean.TRUE.equals(body.get("online"));
+        SecuritySettings settings = securitySettingsRepository.findByUserId(student.getUser().getId())
+                .orElseGet(() -> { SecuritySettings s = new SecuritySettings(); s.setUserId(student.getUser().getId()); return s; });
+        settings.setOnline(online);
+        securitySettingsRepository.save(settings);
+        return ResponseEntity.ok(java.util.Map.of("success", true));
+    }
+
+    /** Update activity status privacy setting */
+    @PutMapping("/privacy-settings")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> updatePrivacySettings(@RequestBody Map<String, Object> body) {
+        Student student = getCurrentStudent();
+        if (student == null) return ResponseEntity.status(401).build();
+        SecuritySettings settings = securitySettingsRepository.findByUserId(student.getUser().getId())
+                .orElseGet(() -> { SecuritySettings s = new SecuritySettings(); s.setUserId(student.getUser().getId()); return s; });
+        if (body.containsKey("activityStatusEnabled"))
+            settings.setActivityStatusEnabled(Boolean.TRUE.equals(body.get("activityStatusEnabled")));
+        securitySettingsRepository.save(settings);
+        return ResponseEntity.ok(java.util.Map.of("success", true));
+    }
+
+    /** Get student privacy settings */
+    @GetMapping("/privacy-settings")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getPrivacySettings() {
+        Student student = getCurrentStudent();
+        if (student == null) return ResponseEntity.status(401).build();
+        SecuritySettings settings = securitySettingsRepository.findByUserId(student.getUser().getId())
+                .orElseGet(() -> { SecuritySettings s = new SecuritySettings(); s.setUserId(student.getUser().getId()); return securitySettingsRepository.save(s); });
+        return ResponseEntity.ok(java.util.Map.of("success", true, "data",
+                java.util.Map.of("activityStatusEnabled", settings.isActivityStatusEnabled())));
     }
 
     /** Student sends a support message — auto-fills name/email/phone from JWT */

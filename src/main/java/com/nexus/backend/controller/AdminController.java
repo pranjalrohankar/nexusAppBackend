@@ -4,6 +4,7 @@ import com.nexus.backend.dto.ApiResponse;
 import com.nexus.backend.dto.CreateUserRequest;
 import com.nexus.backend.model.Course;
 import com.nexus.backend.model.Enrollment;
+import com.nexus.backend.model.SecuritySettings;
 import com.nexus.backend.model.Student;
 import com.nexus.backend.model.Teacher;
 import com.nexus.backend.model.User;
@@ -13,6 +14,7 @@ import com.nexus.backend.repository.EnrollmentRepository;
 import com.nexus.backend.repository.StudentRepository;
 import com.nexus.backend.repository.TeacherRepository;
 import com.nexus.backend.repository.UserRepository;
+import com.nexus.backend.repository.SecuritySettingsRepository;
 import com.nexus.backend.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class AdminController {
     private final EnrollmentRepository enrollmentRepository;
     private final CourseRepository courseRepository;
     private final BatchRepository batchRepository;
+    private final SecuritySettingsRepository securitySettingsRepository;
 
     @GetMapping("/profile")
     @Transactional(readOnly = true)
@@ -115,6 +118,16 @@ public class AdminController {
                 m.put("courseTitle", e.getCourseTitle());
                 m.put("enrollmentDate", e.getEnrollmentDate() != null ? e.getEnrollmentDate() : "");
                 m.put("paymentStatus", e.getPaymentStatus() != null ? e.getPaymentStatus() : "");
+                // Online status
+                Student st = e.getStudent();
+                if (st != null && st.getUser() != null) {
+                    SecuritySettings ss = securitySettingsRepository.findByUserId(st.getUser().getId()).orElse(null);
+                    boolean activityEnabled = ss == null || ss.isActivityStatusEnabled();
+                    boolean isOnline = ss != null && ss.isOnline();
+                    m.put("onlineStatus", activityEnabled ? (isOnline ? "online" : "offline") : "always_online");
+                } else {
+                    m.put("onlineStatus", "offline");
+                }
                 return m;
             }).collect(Collectors.toList());
 
@@ -203,6 +216,11 @@ public class AdminController {
             }).collect(Collectors.toList());
             m.put("enrollments", enrollments);
             m.put("coursesCount", enrollments.size());
+            // Activity status: if activityStatusEnabled=false → always show as online; else use real online flag
+            com.nexus.backend.model.SecuritySettings ss = securitySettingsRepository.findByUserId(s.getUser().getId()).orElse(null);
+            boolean activityEnabled = ss == null || ss.isActivityStatusEnabled();
+            boolean isOnline = ss != null && ss.isOnline();
+            m.put("onlineStatus", activityEnabled ? (isOnline ? "online" : "offline") : "always_online");
             return m;
         }).collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.ok("Students fetched", result));
