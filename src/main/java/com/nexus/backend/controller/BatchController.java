@@ -3,8 +3,10 @@ package com.nexus.backend.controller;
 import com.nexus.backend.dto.BatchDto;
 import com.nexus.backend.model.Batch;
 import com.nexus.backend.model.Enrollment;
+import com.nexus.backend.model.SecuritySettings;
 import com.nexus.backend.model.Student;
 import com.nexus.backend.repository.EnrollmentRepository;
+import com.nexus.backend.repository.SecuritySettingsRepository;
 import com.nexus.backend.service.BatchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,7 @@ public class BatchController {
 
     private final BatchService batchService;
     private final EnrollmentRepository enrollmentRepository;
+    private final SecuritySettingsRepository securitySettingsRepository;
 
     @PostMapping
     public ResponseEntity<Batch> createBatch(@RequestBody BatchDto request) {
@@ -85,6 +88,15 @@ public class BatchController {
                 dto.put("phone", phone);
                 dto.put("active", "Paid".equalsIgnoreCase(e.getPaymentStatus()));
                 dto.put("joinedDate", e.getEnrollmentDate() != null ? e.getEnrollmentDate() : "");
+                // Online status
+                if (s.getUser() != null) {
+                    SecuritySettings ss = securitySettingsRepository.findByUserId(s.getUser().getId()).orElse(null);
+                    boolean activityEnabled = ss == null || ss.isActivityStatusEnabled();
+                    boolean isOnline = ss != null && ss.isOnline();
+                    dto.put("onlineStatus", activityEnabled ? (isOnline ? "online" : "offline") : "always_online");
+                } else {
+                    dto.put("onlineStatus", "offline");
+                }
             }
             return dto;
         }).collect(Collectors.toList());

@@ -20,4 +20,6 @@ public class SecuritySettings {
     private boolean sessionTimeout = false;
     private boolean loginAlerts = false;
     private boolean failedLoginAlerts = false;
+    private boolean activityStatusEnabled = true;  // true = show real online/offline status
+    private boolean online = false;                 // true = currently logged in
 }
