@@ -3,6 +3,8 @@ package com.nexus.backend.controller;
 import com.nexus.backend.dto.TeacherStatsDTO;
 import com.nexus.backend.model.*;
 import com.nexus.backend.repository.*;
+import com.nexus.backend.repository.SecuritySettingsRepository;
+import com.nexus.backend.repository.LoginHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,6 +28,8 @@ public class TeacherController {
     private final TeacherCourseAssignmentRepository assignmentRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final com.nexus.backend.repository.BatchRepository batchRepository;
+    private final SecuritySettingsRepository securitySettingsRepository;
+    private final LoginHistoryRepository loginHistoryRepository;
 
     @GetMapping("/my-courses-batches")
     public ResponseEntity<Map<String, Object>> getMyCoursesBatches(
@@ -180,10 +184,19 @@ public class TeacherController {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             String email = (String) auth.getPrincipal();
             Optional<User> userOpt = userRepository.findByEmail(email);
-            if (userOpt.isEmpty()) return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
+            if (userOpt.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "User not found");
+                return ResponseEntity.status(404).body(error);
+            }
             Optional<Teacher> teacherOpt = teacherRepository.findByUser(userOpt.get());
-            if (teacherOpt.isEmpty()) return ResponseEntity.status(404).body(Map.of("success", false, "message", "Teacher not found"));
-
+            if (teacherOpt.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "Teacher profile not found");
+                return ResponseEntity.status(404).body(error);
+            }
             Teacher teacher = teacherOpt.get();
             if (updates.containsKey("name")) {
                 teacher.setName((String) updates.get("name"));
@@ -202,9 +215,16 @@ public class TeacherController {
             teacherRepository.save(teacher);
             if (teacher.getUser() != null) userRepository.save(teacher.getUser());
 
-            return ResponseEntity.ok(Map.of("success", true, "message", "Profile updated successfully", "data", buildTeacherStats(teacher)));
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Profile updated successfully");
+            response.put("data", buildTeacherStats(teacher));
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "Failed to update profile: " + e.getMessage()));
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "Failed to update profile: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
         }
     }
 
@@ -351,23 +371,32 @@ public class TeacherController {
 
             // amazonq-ignore-next-line
             Teacher teacher = teacherOpt.get();
-            
-            // Delete course assignments first
+            User user = teacher.getUser();
+
+            // 1. Delete course assignments first
             List<TeacherCourseAssignment> assignments = assignmentRepository.findByTeacher(teacher);
             assignmentRepository.deleteAll(assignments);
-            
-            // Delete teacher
+
+            // 2. Delete teacher record
             teacherRepository.delete(teacher);
-            
-            // Optionally delete user account
-            if (teacher.getUser() != null) {
-                userRepository.delete(teacher.getUser());
+            teacherRepository.flush();
+
+            // 3. Delete the linked user account (and its related records)
+            if (user != null) {
+                // Clean up security settings and login history so nothing blocks re-creation
+                securitySettingsRepository.findByUserId(user.getId())
+                    .ifPresent(securitySettingsRepository::delete);
+                List<com.nexus.backend.model.LoginHistory> history =
+                    loginHistoryRepository.findByUserIdOrderByLoginTimeDesc(user.getId());
+                loginHistoryRepository.deleteAll(history);
+
+                userRepository.delete(user);
             }
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Teacher deleted successfully");
-            
+
             return ResponseEntity.ok(response);
         // amazonq-ignore-next-line
         } catch (Exception e) {
