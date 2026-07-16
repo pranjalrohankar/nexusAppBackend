@@ -18,10 +18,13 @@ public class BatchService {
 
     private final BatchRepository batchRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final AppNotificationService appNotificationService;
 
-    public BatchService(BatchRepository batchRepository, EnrollmentRepository enrollmentRepository) {
+    public BatchService(BatchRepository batchRepository, EnrollmentRepository enrollmentRepository,
+                        AppNotificationService appNotificationService) {
         this.batchRepository = batchRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.appNotificationService = appNotificationService;
     }
 
     public Batch createBatch(BatchDto request) {
@@ -68,7 +71,12 @@ public class BatchService {
         batch.setEndDate(request.getEndDate());
         batch.setStatus(request.getStatus());
         batch.setClassDays(request.getClassDays());
-        return batchRepository.save(batch);
+        Batch saved = batchRepository.save(batch);
+        String schedule = request.getClassDays() != null
+                ? request.getClassDays().toString()
+                : "updated schedule";
+        appNotificationService.notifyScheduleUpdated(batch.getBatchName(), schedule);
+        return saved;
     }
 
     public Batch getBatchById(Long id) {
