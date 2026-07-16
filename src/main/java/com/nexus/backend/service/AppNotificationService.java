@@ -83,4 +83,39 @@ public class AppNotificationService {
 
         logger.info("Course assignment notification created successfully.");
     }
+
+    public void notifyEnrollment(String studentName, String courseName) {
+        notificationService.createNotification(
+                "New Student Enrolled",
+                studentName + " enrolled in " + courseName + ".",
+                "TEACHER");
+    }
+
+    public void notifyMilestone(String courseName, int count) {
+        notificationService.createNotification(
+                "Milestone Achieved",
+                courseName + " reached " + count + " enrollments!",
+                "TEACHER");
+    }
+
+    public void notifyStudentQuery(String studentName, String courseName) {
+        notificationService.createNotification(
+                "Student Query",
+                studentName + " submitted a query about " + courseName + ".",
+                "TEACHER");
+    }
+
+    public void notifyScheduleUpdated(String batchName, String schedule) {
+        notificationService.createNotification(
+                "Schedule Updated",
+                "Batch " + batchName + " schedule updated to " + schedule + ".",
+                "TEACHER");
+    }
+
+    public void notifyClassStartingSoon(String courseName, String batchName) {
+        notificationService.createNotification(
+                "Class Starting Soon",
+                courseName + " (" + batchName + ") starts in 15 minutes.",
+                "TEACHER");
+    }
 }

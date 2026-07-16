@@ -16,6 +16,7 @@ import com.nexus.backend.repository.TeacherRepository;
 import com.nexus.backend.repository.UserRepository;
 import com.nexus.backend.repository.SecuritySettingsRepository;
 import com.nexus.backend.service.UserService;
+import com.nexus.backend.service.AppNotificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -43,6 +44,7 @@ public class AdminController {
     private final CourseRepository courseRepository;
     private final BatchRepository batchRepository;
     private final SecuritySettingsRepository securitySettingsRepository;
+    private final AppNotificationService appNotificationService;
 
     @GetMapping("/profile")
     @Transactional(readOnly = true)
@@ -289,6 +291,10 @@ public class AdminController {
         e.setEnrollmentDate(body.getOrDefault("enrollmentDate", java.time.LocalDate.now().toString()));
         e.setPaymentStatus(body.getOrDefault("paymentStatus", "Pending"));
         enrollmentRepository.save(e);
+        String studentName = s.getUser() != null ? s.getUser().getName() : "A student";
+        appNotificationService.notifyEnrollment(studentName, courseTitle);
+        long total = enrollmentRepository.countByCourseTitleIgnoreCase(courseTitle);
+        if (total % 100 == 0) appNotificationService.notifyMilestone(courseTitle, (int) total);
         return ResponseEntity.ok(ApiResponse.ok("Student enrolled in " + courseTitle, null));
     }
 

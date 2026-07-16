@@ -22,13 +22,16 @@ public class EnquiryService {
 
     private final EnquiryRepository enquiryRepository;
     private final EmailService emailService;
+    private final AppNotificationService appNotificationService;
 
     @Value("${nexus.enquiry.admin-email:adityanale1831@gmail.com}")
     private String adminEmail;
 
-    public EnquiryService(EnquiryRepository enquiryRepository, EmailService emailService) {
+    public EnquiryService(EnquiryRepository enquiryRepository, EmailService emailService,
+                          AppNotificationService appNotificationService) {
         this.enquiryRepository = enquiryRepository;
         this.emailService = emailService;
+        this.appNotificationService = appNotificationService;
     }
 
     // Mark enquiry as read
@@ -89,6 +92,9 @@ public class EnquiryService {
         emailService.sendEnquiryNotification(adminEmail, saved);
 
         logger.info("Admin notification email sent successfully.");
+
+        appNotificationService.notifyStudentQuery(saved.getFullName(),
+                saved.getCourse() != null ? saved.getCourse() : "General");
 
         return saved;
     }

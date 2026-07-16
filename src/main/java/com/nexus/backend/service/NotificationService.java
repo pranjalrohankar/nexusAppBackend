@@ -75,4 +75,11 @@ public class NotificationService {
 
         logger.info("Notification {} marked as read successfully.", id);
     }
+
+    public void markAllAsRead(String role) {
+        List<Notification> list = notificationRepository.findByReceiverRoleOrderByCreatedAtDesc(role);
+        list.forEach(n -> n.setSeen(true));
+        notificationRepository.saveAll(list);
+        logger.info("All notifications marked as read for role: {}", role);
+    }
 }
