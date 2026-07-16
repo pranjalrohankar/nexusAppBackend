@@ -184,10 +184,19 @@ public class TeacherController {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             String email = (String) auth.getPrincipal();
             Optional<User> userOpt = userRepository.findByEmail(email);
-            if (userOpt.isEmpty()) return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
+            if (userOpt.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "User not found");
+                return ResponseEntity.status(404).body(error);
+            }
             Optional<Teacher> teacherOpt = teacherRepository.findByUser(userOpt.get());
-            if (teacherOpt.isEmpty()) return ResponseEntity.status(404).body(Map.of("success", false, "message", "Teacher not found"));
-
+            if (teacherOpt.isEmpty()) {
+                Map<String, Object> error = new HashMap<>();
+                error.put("success", false);
+                error.put("message", "Teacher profile not found");
+                return ResponseEntity.status(404).body(error);
+            }
             Teacher teacher = teacherOpt.get();
             if (updates.containsKey("name")) {
                 teacher.setName((String) updates.get("name"));
@@ -206,9 +215,16 @@ public class TeacherController {
             teacherRepository.save(teacher);
             if (teacher.getUser() != null) userRepository.save(teacher.getUser());
 
-            return ResponseEntity.ok(Map.of("success", true, "message", "Profile updated successfully", "data", buildTeacherStats(teacher)));
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Profile updated successfully");
+            response.put("data", buildTeacherStats(teacher));
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", "Failed to update profile: " + e.getMessage()));
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "Failed to update profile: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(error);
         }
     }
 
