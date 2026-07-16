@@ -3,6 +3,8 @@ package com.nexus.backend.controller;
 import com.nexus.backend.dto.TeacherStatsDTO;
 import com.nexus.backend.model.*;
 import com.nexus.backend.repository.*;
+import com.nexus.backend.repository.SecuritySettingsRepository;
+import com.nexus.backend.repository.LoginHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,6 +28,8 @@ public class TeacherController {
     private final TeacherCourseAssignmentRepository assignmentRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final com.nexus.backend.repository.BatchRepository batchRepository;
+    private final SecuritySettingsRepository securitySettingsRepository;
+    private final LoginHistoryRepository loginHistoryRepository;
 
     @GetMapping("/my-courses-batches")
     public ResponseEntity<Map<String, Object>> getMyCoursesBatches(
@@ -351,23 +355,32 @@ public class TeacherController {
 
             // amazonq-ignore-next-line
             Teacher teacher = teacherOpt.get();
-            
-            // Delete course assignments first
+            User user = teacher.getUser();
+
+            // 1. Delete course assignments first
             List<TeacherCourseAssignment> assignments = assignmentRepository.findByTeacher(teacher);
             assignmentRepository.deleteAll(assignments);
-            
-            // Delete teacher
+
+            // 2. Delete teacher record
             teacherRepository.delete(teacher);
-            
-            // Optionally delete user account
-            if (teacher.getUser() != null) {
-                userRepository.delete(teacher.getUser());
+            teacherRepository.flush();
+
+            // 3. Delete the linked user account (and its related records)
+            if (user != null) {
+                // Clean up security settings and login history so nothing blocks re-creation
+                securitySettingsRepository.findByUserId(user.getId())
+                    .ifPresent(securitySettingsRepository::delete);
+                List<com.nexus.backend.model.LoginHistory> history =
+                    loginHistoryRepository.findByUserIdOrderByLoginTimeDesc(user.getId());
+                loginHistoryRepository.deleteAll(history);
+
+                userRepository.delete(user);
             }
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Teacher deleted successfully");
-            
+
             return ResponseEntity.ok(response);
         // amazonq-ignore-next-line
         } catch (Exception e) {

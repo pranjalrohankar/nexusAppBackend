@@ -59,6 +59,7 @@ public class UserService {
             if (role == User.Role.STUDENT) {
                 saveStudentProfile(user, req);
             } else if (role == User.Role.TEACHER) {
+                // Always create teacher profile for new user
                 saveTeacherProfile(user, req);
             }
         } else {
@@ -66,6 +67,25 @@ public class UserService {
                 throw new RuntimeException("User not found");
             }
             user = existing;
+
+            // If this is a TEACHER re-creation (user exists but teacher profile was deleted),
+            // create the teacher profile instead of treating it as re-enrollment
+            if (role == User.Role.TEACHER) {
+                boolean teacherProfileExists = teacherRepository.findByUser(user).isPresent();
+                if (!teacherProfileExists) {
+                    // Orphaned user — reset password and recreate teacher profile
+                    if (rawPassword != null && !rawPassword.isBlank()) {
+                        user.setPassword(passwordEncoder.encode(rawPassword));
+                        user.setName(req.getFirstName() + " " + req.getLastName());
+                        user.setRole(User.Role.TEACHER);
+                        userRepository.save(user);
+                    }
+                    saveTeacherProfile(user, req);
+                    return user;
+                } else {
+                    throw new RuntimeException("A teacher with this email already exists.");
+                }
+            }
             // Re-enrollment: update password to whatever admin entered
             // so the student can login with the password shown in the email
             if (rawPassword == null || rawPassword.isBlank()) {
