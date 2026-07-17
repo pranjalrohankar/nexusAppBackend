@@ -1,6 +1,9 @@
 package com.nexus.backend.controller;
 
 import com.nexus.backend.model.StudyMaterial;
+import com.nexus.backend.repository.EnrollmentRepository;
+import com.nexus.backend.repository.UserRepository;
+import com.nexus.backend.service.NotificationService;
 import com.nexus.backend.service.StudyMaterialService;
 
 import org.slf4j.Logger;
@@ -33,9 +36,18 @@ public class StudyMaterialController {
             LoggerFactory.getLogger(StudyMaterialController.class);
 
     private final StudyMaterialService service;
+    private final EnrollmentRepository enrollmentRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public StudyMaterialController(StudyMaterialService service) {
+    public StudyMaterialController(StudyMaterialService service,
+            EnrollmentRepository enrollmentRepository,
+            UserRepository userRepository,
+            NotificationService notificationService) {
         this.service = service;
+        this.enrollmentRepository = enrollmentRepository;
+        this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     // Upload Study Material
@@ -71,6 +83,18 @@ public class StudyMaterialController {
             );
 
             logger.info("Study material uploaded successfully. ID: {}", material.getId());
+
+            // Notify all students enrolled in this course
+            enrollmentRepository.findByCourseTitleIgnoreCase(course).forEach(e -> {
+                if (e.getStudent() != null && e.getStudent().getUser() != null) {
+                    String studentEmail = e.getStudent().getEmail() != null && !e.getStudent().getEmail().isBlank()
+                        ? e.getStudent().getEmail() : e.getStudent().getUser().getEmail();
+                    notificationService.createNotificationForEmail(
+                        "New Course Material",
+                        course + " - " + title + " uploaded",
+                        "STUDENT", studentEmail);
+                }
+            });
 
             return ResponseEntity.ok(material);
 

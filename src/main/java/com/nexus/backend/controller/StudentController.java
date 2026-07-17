@@ -140,6 +140,37 @@ public class StudentController {
         return ResponseEntity.ok(Map.of("success", true, "data", dto));
     }
 
+    /** Returns upcoming classes in the next 24 hours for the student's enrolled courses */
+    @GetMapping("/upcoming-classes")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getUpcomingClasses() {
+        Student student = getCurrentStudent();
+        if (student == null) return ResponseEntity.status(401).build();
+        List<String> enrolledCourses = enrollmentRepository.findByStudent(student)
+                .stream().map(Enrollment::getCourseTitle).collect(Collectors.toList());
+        java.time.DayOfWeek today = java.time.LocalDate.now().getDayOfWeek();
+        java.time.DayOfWeek tomorrow = today.plus(1);
+        com.nexus.backend.enums.ClassDay todayDay = com.nexus.backend.enums.ClassDay
+                .valueOf(today.name().substring(0, 3));
+        com.nexus.backend.enums.ClassDay tomorrowDay = com.nexus.backend.enums.ClassDay
+                .valueOf(tomorrow.name().substring(0, 3));
+        List<Map<String, Object>> result = batchRepository.findAll().stream()
+            .filter(b -> b.getSelectCourse() != null
+                && enrolledCourses.stream().anyMatch(c -> c.equalsIgnoreCase(b.getSelectCourse()))
+                && b.getClassDays() != null
+                && (b.getClassDays().contains(todayDay) || b.getClassDays().contains(tomorrowDay)))
+            .map(b -> {
+                Map<String, Object> dto = new java.util.HashMap<>();
+                dto.put("course", b.getSelectCourse());
+                dto.put("batchName", b.getBatchName());
+                dto.put("classTimings", b.getClassTimings() != null ? b.getClassTimings() : "");
+                dto.put("isToday", b.getClassDays().contains(todayDay));
+                dto.put("instructor", b.getInstructor() != null ? b.getInstructor() : "");
+                return dto;
+            }).collect(Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
     /** Returns enrolled courses with batch & status info */
     @GetMapping("/enrollments")
     @Transactional(readOnly = true)

@@ -41,4 +41,17 @@ public class NotificationController {
     public ResponseEntity<List<Notification>> getTeacherNotifications() {
         return ResponseEntity.ok(notificationService.getNotifications("TEACHER"));
     }
+
+    // Student fetches their own notifications by email
+    @GetMapping("/student")
+    public ResponseEntity<List<Notification>> getStudentNotifications(Authentication auth) {
+        String email = auth.getName();
+        return ResponseEntity.ok(notificationService.getNotificationsByEmail(email));
+    }
+
+    @PatchMapping("/student/mark-all-read")
+    public ResponseEntity<Map<String, String>> markAllStudentRead(Authentication auth) {
+        notificationService.markAllAsReadByEmail(auth.getName());
+        return ResponseEntity.ok(Map.of("message", "All notifications marked as read"));
+    }
 }
