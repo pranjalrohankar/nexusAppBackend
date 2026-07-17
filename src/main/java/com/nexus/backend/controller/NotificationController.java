@@ -4,6 +4,7 @@ import com.nexus.backend.model.Notification;
 import com.nexus.backend.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,9 +17,11 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    @GetMapping("/teacher")
-    public ResponseEntity<List<Notification>> getTeacherNotifications() {
-        return ResponseEntity.ok(notificationService.getNotifications("TEACHER"));
+    // Teacher fetches only their own notifications by their login email
+    @GetMapping("/my")
+    public ResponseEntity<List<Notification>> getMyNotifications(Authentication auth) {
+        String email = auth.getName();
+        return ResponseEntity.ok(notificationService.getNotificationsByEmail(email));
     }
 
     @PatchMapping("/{id}/read")
@@ -28,8 +31,14 @@ public class NotificationController {
     }
 
     @PatchMapping("/mark-all-read")
-    public ResponseEntity<Map<String, String>> markAllRead(@RequestParam String role) {
-        notificationService.markAllAsRead(role);
+    public ResponseEntity<Map<String, String>> markAllRead(Authentication auth) {
+        notificationService.markAllAsReadByEmail(auth.getName());
         return ResponseEntity.ok(Map.of("message", "All notifications marked as read"));
+    }
+
+    // Keep old endpoint for backward compat
+    @GetMapping("/teacher")
+    public ResponseEntity<List<Notification>> getTeacherNotifications() {
+        return ResponseEntity.ok(notificationService.getNotifications("TEACHER"));
     }
 }

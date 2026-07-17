@@ -19,19 +19,28 @@ public class NotificationService {
         this.notificationRepository = notificationRepository;
     }
 
-    public void createNotification(String message,
-                                   String title,
-                                   String receiverRole) {
-
+    public void createNotification(String message, String title, String receiverRole) {
         logger.info("Creating notification for role: {}", receiverRole);
+        notificationRepository.save(new Notification(title, message, receiverRole));
+        logger.info("Notification created. Title: '{}', Receiver: '{}'", title, receiverRole);
+    }
 
-        Notification notification =
-                new Notification(title, message, receiverRole);
+    public void createNotificationForEmail(String title, String message, String receiverRole, String receiverEmail) {
+        logger.info("Creating notification for email: {}", receiverEmail);
+        notificationRepository.save(new Notification(title, message, receiverRole, receiverEmail));
+        logger.info("Notification created for email: {}", receiverEmail);
+    }
 
-        notificationRepository.save(notification);
+    public List<Notification> getNotificationsByEmail(String email) {
+        logger.info("Fetching notifications for email: {}", email);
+        return notificationRepository.findByReceiverEmailOrderByCreatedAtDesc(email);
+    }
 
-        logger.info("Notification created successfully. Title: '{}', Receiver: '{}'",
-                title, receiverRole);
+    public void markAllAsReadByEmail(String email) {
+        List<Notification> list = notificationRepository.findByReceiverEmailOrderByCreatedAtDesc(email);
+        list.forEach(n -> n.setSeen(true));
+        notificationRepository.saveAll(list);
+        logger.info("All notifications marked as read for email: {}", email);
     }
 
     public List<Notification> getNotifications(String role) {
