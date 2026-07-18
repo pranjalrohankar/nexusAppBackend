@@ -156,7 +156,13 @@ public class StudyMaterialController {
         logger.info("Download request received for material ID: {}", id);
 
         StudyMaterial material = service.getMaterialById(id);
-        Path filePath = Paths.get(material.getFilePath());
+        Path filePath = Paths.get("uploads/materials").resolve(material.getFileName());
+        if (!java.nio.file.Files.exists(filePath)) {
+            Path dbPath = Paths.get(material.getFilePath());
+            if (java.nio.file.Files.exists(dbPath)) {
+                filePath = dbPath;
+            }
+        }
         Resource resource = new UrlResource(filePath.toUri());
 
         return ResponseEntity.ok()
