@@ -29,6 +29,7 @@ public class TeacherStatsDTO {
     private String city;
     private String state;
     private String pinCode;
+    private String profileImage;
     
     @Data
     @NoArgsConstructor

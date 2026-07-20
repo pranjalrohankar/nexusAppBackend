@@ -211,6 +211,7 @@ public class TeacherController {
             if (updates.containsKey("city")) teacher.setCity((String) updates.get("city"));
             if (updates.containsKey("state")) teacher.setState((String) updates.get("state"));
             if (updates.containsKey("pinCode")) teacher.setPinCode((String) updates.get("pinCode"));
+            if (updates.containsKey("profileImage")) teacher.setProfileImage((String) updates.get("profileImage"));
 
             teacherRepository.save(teacher);
             if (teacher.getUser() != null) userRepository.save(teacher.getUser());
@@ -545,6 +546,7 @@ public class TeacherController {
             .city(teacher.getCity())
             .state(teacher.getState())
             .pinCode(teacher.getPinCode())
+            .profileImage(teacher.getProfileImage())
             .build();
     }
 

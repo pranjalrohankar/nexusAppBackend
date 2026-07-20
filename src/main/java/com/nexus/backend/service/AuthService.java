@@ -46,17 +46,19 @@ public class AuthService {
 
         try {
             user = userRepository.findByEmail(request.getEmail())
-                    .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+                    .orElseThrow(() -> new RuntimeException("Invalid ID or Password"));
 
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                 handleFailedAttempt(user, ipAddress, userAgent, request.getDeviceFingerprint());
-                throw new RuntimeException("Invalid email or password");
+                throw new RuntimeException("Invalid ID or Password");
             }
 
             String expectedRole = request.getRole().toUpperCase(Locale.ROOT);
             if (!user.getRole().name().equals(expectedRole)) {
                 handleFailedAttempt(user, ipAddress, userAgent, request.getDeviceFingerprint());
-                throw new RuntimeException("Access denied for role: " + request.getRole());
+                String actualRoleStr = user.getRole().name().substring(0, 1).toUpperCase(Locale.ROOT) + user.getRole().name().substring(1).toLowerCase(Locale.ROOT);
+                String requestedRoleStr = request.getRole().substring(0, 1).toUpperCase(Locale.ROOT) + request.getRole().substring(1).toLowerCase(Locale.ROOT);
+                throw new RuntimeException("Invalid Role: Account is registered as " + actualRoleStr + ", not " + requestedRoleStr);
             }
 
             failedAttempts.remove(request.getEmail());
