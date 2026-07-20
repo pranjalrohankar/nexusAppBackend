@@ -2,7 +2,6 @@ package com.nexus.backend.controller;
 
 import com.nexus.backend.model.StudyMaterial;
 import com.nexus.backend.repository.EnrollmentRepository;
-import com.nexus.backend.repository.UserRepository;
 import com.nexus.backend.service.NotificationService;
 import com.nexus.backend.service.StudyMaterialService;
 
@@ -37,16 +36,13 @@ public class StudyMaterialController {
 
     private final StudyMaterialService service;
     private final EnrollmentRepository enrollmentRepository;
-    private final UserRepository userRepository;
     private final NotificationService notificationService;
 
     public StudyMaterialController(StudyMaterialService service,
             EnrollmentRepository enrollmentRepository,
-            UserRepository userRepository,
             NotificationService notificationService) {
         this.service = service;
         this.enrollmentRepository = enrollmentRepository;
-        this.userRepository = userRepository;
         this.notificationService = notificationService;
     }
 
