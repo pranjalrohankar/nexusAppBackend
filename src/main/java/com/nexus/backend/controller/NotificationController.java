@@ -17,11 +17,11 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    // Teacher fetches only their own notifications by their login email
+    // Teacher fetches their notifications by email/role
     @GetMapping("/my")
     public ResponseEntity<List<Notification>> getMyNotifications(Authentication auth) {
-        String email = auth.getName();
-        return ResponseEntity.ok(notificationService.getNotificationsByEmail(email));
+        String email = auth != null ? auth.getName() : null;
+        return ResponseEntity.ok(notificationService.getNotificationsForUser(email, "TEACHER"));
     }
 
     @PatchMapping("/{id}/read")
@@ -32,7 +32,9 @@ public class NotificationController {
 
     @PatchMapping("/mark-all-read")
     public ResponseEntity<Map<String, String>> markAllRead(Authentication auth) {
-        notificationService.markAllAsReadByEmail(auth.getName());
+        if (auth != null && auth.getName() != null) {
+            notificationService.markAllAsReadByEmail(auth.getName());
+        }
         return ResponseEntity.ok(Map.of("message", "All notifications marked as read"));
     }
 
@@ -42,11 +44,11 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getNotifications("TEACHER"));
     }
 
-    // Student fetches their own notifications by email
+    // Student fetches their notifications by email/role
     @GetMapping("/student")
     public ResponseEntity<List<Notification>> getStudentNotifications(Authentication auth) {
-        String email = auth.getName();
-        return ResponseEntity.ok(notificationService.getNotificationsByEmail(email));
+        String email = auth != null ? auth.getName() : null;
+        return ResponseEntity.ok(notificationService.getNotificationsForUser(email, "STUDENT"));
     }
 
     @PatchMapping("/student/mark-all-read")

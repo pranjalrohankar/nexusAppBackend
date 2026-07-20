@@ -36,6 +36,29 @@ public class NotificationService {
         return notificationRepository.findByReceiverEmailOrderByCreatedAtDesc(email);
     }
 
+    public List<Notification> getNotificationsForUser(String email, String role) {
+        logger.info("Fetching combined notifications for email: {}, role: {}", email, role);
+        if (email == null || email.isBlank()) {
+            return notificationRepository.findByReceiverRoleOrderByCreatedAtDesc(role);
+        }
+        List<Notification> emailNotifs = notificationRepository.findByReceiverEmailOrderByCreatedAtDesc(email);
+        List<Notification> roleNotifs = notificationRepository.findByReceiverRoleOrderByCreatedAtDesc(role);
+
+        java.util.Set<Long> seenIds = new java.util.HashSet<>();
+        List<Notification> combined = new java.util.ArrayList<>();
+        for (Notification n : emailNotifs) {
+            if (n.getId() != null && seenIds.add(n.getId())) combined.add(n);
+        }
+        for (Notification n : roleNotifs) {
+            if (n.getId() != null && seenIds.add(n.getId())) combined.add(n);
+        }
+        combined.sort((a, b) -> {
+            if (a.getCreatedAt() == null || b.getCreatedAt() == null) return 0;
+            return b.getCreatedAt().compareTo(a.getCreatedAt());
+        });
+        return combined;
+    }
+
     public void markAllAsReadByEmail(String email) {
         List<Notification> list = notificationRepository.findByReceiverEmailOrderByCreatedAtDesc(email);
         list.forEach(n -> n.setSeen(true));
