@@ -1,0 +1,198 @@
+package com.nexus.backend.controller;
+
+import com.nexus.backend.model.StudyMaterial;
+import com.nexus.backend.service.StudyMaterialService;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.FileSystemException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/materials")
+@CrossOrigin("*")
+public class StudyMaterialController {
+
+    private static final Logger logger =
+            LoggerFactory.getLogger(StudyMaterialController.class);
+
+    private final StudyMaterialService service;
+
+    public StudyMaterialController(StudyMaterialService service) {
+        this.service = service;
+    }
+
+    // Upload Study Material
+    @PostMapping("/upload")
+    public ResponseEntity<?> uploadMaterial(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("title") String title,
+            @RequestParam("description") String description,
+            @RequestParam("course") String course,
+            @RequestParam("batch") String batch,
+            @RequestParam("fileType") String fileType) {
+
+        logger.info("Upload request received. Title: {}, Course: {}, Batch: {}",
+                title, course, batch);
+
+        try {
+
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String currentEmail = auth != null ? auth.getName() : null;
+            String currentRole = auth != null && !auth.getAuthorities().isEmpty()
+                    ? auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
+                    : null;
+
+            StudyMaterial material = service.uploadMaterial(
+                    file,
+                    title,
+                    description,
+                    course,
+                    batch,
+                    fileType,
+                    currentEmail,
+                    currentRole
+            );
+
+            logger.info("Study material uploaded successfully. ID: {}", material.getId());
+
+            return ResponseEntity.ok(material);
+
+        } catch (IllegalArgumentException e) {
+
+            logger.warn("Validation failed: {}", e.getMessage());
+
+            return ResponseEntity.badRequest().body(e.getMessage());
+
+        } catch (MaxUploadSizeExceededException e) {
+
+            logger.error("File size exceeded allowed limit.", e);
+
+            return ResponseEntity.badRequest()
+                    .body("File size exceeds the allowed limit.");
+
+        } catch (FileSystemException e) {
+
+            logger.error("File system error: {}", e.getReason(), e);
+
+            return ResponseEntity.internalServerError()
+                    .body("File system error: " + e.getReason());
+
+        } catch (IOException e) {
+
+            logger.error("File processing failed.", e);
+
+            return ResponseEntity.internalServerError()
+                    .body("File processing failed: " + e.getMessage());
+
+        } catch (DataAccessException e) {
+
+            logger.error("Database error while saving study material.", e);
+
+            return ResponseEntity.internalServerError()
+                    .body("Database error while saving material.");
+        }
+    }
+
+    // Get All Materials
+    @GetMapping
+    public List<StudyMaterial> getAllMaterials() {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentEmail = auth != null ? auth.getName() : null;
+        String currentRole = auth != null && !auth.getAuthorities().isEmpty()
+                ? auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
+                : null;
+
+        logger.info("Fetching all study materials.");
+
+        List<StudyMaterial> materials = service.getAllMaterials(currentEmail, currentRole);
+
+        logger.info("Returned {} study materials.", materials.size());
+
+        return materials;
+    }
+
+    // Get Materials By Course
+    @GetMapping("/by-course")
+    public List<StudyMaterial> getByCourse(@RequestParam String course) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentEmail = auth != null ? auth.getName() : null;
+        String currentRole = auth != null && !auth.getAuthorities().isEmpty()
+                ? auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
+                : null;
+
+        logger.info("Fetching study materials for course: {}", course);
+
+        List<StudyMaterial> materials = service.getMaterialsByCourse(course, currentEmail, currentRole);
+
+        logger.info("Found {} study materials for course: {}",
+                materials.size(), course);
+
+        return materials;
+    }
+
+    // Download Material
+    @GetMapping("/download/{id}")
+    public ResponseEntity<Resource> downloadMaterial(@PathVariable Long id) throws IOException {
+
+        logger.info("Download request received for material ID: {}", id);
+
+        StudyMaterial material = service.getMaterialById(id);
+        Path filePath = Paths.get(material.getFilePath());
+        Resource resource = new UrlResource(filePath.toUri());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + material.getFileName() + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource);
+    }
+
+    // Delete Material
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteMaterial(@PathVariable Long id) {
+
+        logger.info("Delete request received for material ID: {}", id);
+
+        try {
+
+            service.deleteMaterial(id);
+
+            logger.info("Study material deleted successfully. ID: {}", id);
+
+            return ResponseEntity.ok("Material Deleted Successfully");
+
+        } catch (IllegalArgumentException e) {
+
+            logger.warn("Invalid material ID: {}", id);
+
+            return ResponseEntity.badRequest()
+                    .body("Invalid material ID.");
+
+        } catch (DataAccessException e) {
+
+            logger.error("Database error while deleting material ID: {}", id, e);
+
+            return ResponseEntity.internalServerError()
+                    .body("Database error while deleting material.");
+        }
+    }
+}
