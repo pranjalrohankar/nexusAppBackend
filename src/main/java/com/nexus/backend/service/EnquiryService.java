@@ -3,7 +3,9 @@ package com.nexus.backend.service;
 import com.nexus.backend.dto.EnquiryRequest;
 import com.nexus.backend.exception.BadRequestException;
 import com.nexus.backend.model.Enquiry;
+import com.nexus.backend.repository.BatchRepository;
 import com.nexus.backend.repository.EnquiryRepository;
+import com.nexus.backend.repository.UserRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,15 +25,20 @@ public class EnquiryService {
     private final EnquiryRepository enquiryRepository;
     private final EmailService emailService;
     private final AppNotificationService appNotificationService;
+    private final BatchRepository batchRepository;
+    private final UserRepository userRepository;
 
     @Value("${nexus.enquiry.admin-email:adityanale1831@gmail.com}")
     private String adminEmail;
 
     public EnquiryService(EnquiryRepository enquiryRepository, EmailService emailService,
-                          AppNotificationService appNotificationService) {
+                          AppNotificationService appNotificationService,
+                          BatchRepository batchRepository, UserRepository userRepository) {
         this.enquiryRepository = enquiryRepository;
         this.emailService = emailService;
         this.appNotificationService = appNotificationService;
+        this.batchRepository = batchRepository;
+        this.userRepository = userRepository;
     }
 
     // Mark enquiry as read
@@ -93,8 +100,21 @@ public class EnquiryService {
 
         logger.info("Admin notification email sent successfully.");
 
-        appNotificationService.notifyStudentQuery(saved.getFullName(),
-                saved.getCourse() != null ? saved.getCourse() : "General");
+        appNotificationService.notifyNewEnquiry(saved.getFullName());
+
+        // Send to specific teacher assigned to this course
+        if (saved.getCourse() != null && !saved.getCourse().isBlank()) {
+            batchRepository.findAll().stream()
+                .filter(b -> b.getSelectCourse() != null
+                    && b.getSelectCourse().equalsIgnoreCase(saved.getCourse())
+                    && b.getInstructor() != null && !b.getInstructor().isBlank())
+                .findFirst()
+                .ifPresent(b -> userRepository.findAll().stream()
+                    .filter(u -> u.getName() != null && u.getName().equalsIgnoreCase(b.getInstructor()))
+                    .map(u -> u.getEmail()).findFirst()
+                    .ifPresent(email -> appNotificationService.notifyStudentQuery(
+                        saved.getFullName(), saved.getCourse(), email)));
+        }
 
         return saved;
     }

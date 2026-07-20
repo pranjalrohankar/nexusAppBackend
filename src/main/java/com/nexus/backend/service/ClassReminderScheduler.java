@@ -2,6 +2,7 @@ package com.nexus.backend.service;
 
 import com.nexus.backend.model.Batch;
 import com.nexus.backend.repository.BatchRepository;
+import com.nexus.backend.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,14 +23,17 @@ public class ClassReminderScheduler {
 
     private final BatchRepository batchRepository;
     private final AppNotificationService appNotificationService;
+    private final UserRepository userRepository;
 
     private final Set<Long> notifiedToday = new HashSet<>();
     private int lastCheckedDay = -1;
 
     public ClassReminderScheduler(BatchRepository batchRepository,
-                                   AppNotificationService appNotificationService) {
+                                   AppNotificationService appNotificationService,
+                                   UserRepository userRepository) {
         this.batchRepository = batchRepository;
         this.appNotificationService = appNotificationService;
+        this.userRepository = userRepository;
     }
 
     @Scheduled(fixedDelay = 60_000)
@@ -59,7 +63,14 @@ public class ClassReminderScheduler {
 
             if (classStart.isAfter(windowStart) && classStart.isBefore(windowEnd)) {
                 logger.info("Sending 15-min reminder for: {}", batch.getSelectCourse());
-                appNotificationService.notifyClassStartingSoon(batch.getSelectCourse(), batch.getBatchName());
+                // Find instructor email
+                if (batch.getInstructor() != null && !batch.getInstructor().isBlank()) {
+                    userRepository.findAll().stream()
+                        .filter(u -> u.getName() != null && u.getName().equalsIgnoreCase(batch.getInstructor()))
+                        .map(u -> u.getEmail()).findFirst()
+                        .ifPresent(email -> appNotificationService.notifyClassStartingSoon(
+                            batch.getSelectCourse(), batch.getBatchName(), email));
+                }
                 notifiedToday.add(batch.getId());
             }
         }
