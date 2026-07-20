@@ -84,38 +84,38 @@ public class AppNotificationService {
         logger.info("Course assignment notification created successfully.");
     }
 
-    public void notifyEnrollment(String studentName, String courseName) {
-        notificationService.createNotification(
+    public void notifyEnrollment(String studentName, String courseName, String teacherEmail) {
+        notificationService.createNotificationForEmail(
                 "New Student Enrolled",
                 studentName + " enrolled in " + courseName + ".",
-                "TEACHER");
+                "TEACHER", teacherEmail);
     }
 
-    public void notifyMilestone(String courseName, int count) {
-        notificationService.createNotification(
+    public void notifyMilestone(String courseName, int count, String teacherEmail) {
+        notificationService.createNotificationForEmail(
                 "Milestone Achieved",
                 courseName + " reached " + count + " enrollments!",
-                "TEACHER");
+                "TEACHER", teacherEmail);
     }
 
-    public void notifyStudentQuery(String studentName, String courseName) {
-        notificationService.createNotification(
+    public void notifyStudentQuery(String studentName, String courseName, String teacherEmail) {
+        notificationService.createNotificationForEmail(
                 "Student Query",
                 studentName + " submitted a query about " + courseName + ".",
-                "TEACHER");
+                "TEACHER", teacherEmail);
     }
 
-    public void notifyScheduleUpdated(String batchName, String schedule) {
-        notificationService.createNotification(
+    public void notifyScheduleUpdated(String batchName, String schedule, String teacherEmail) {
+        notificationService.createNotificationForEmail(
                 "Schedule Updated",
                 "Batch " + batchName + " schedule updated to " + schedule + ".",
-                "TEACHER");
+                "TEACHER", teacherEmail);
     }
 
-    public void notifyClassStartingSoon(String courseName, String batchName) {
-        notificationService.createNotification(
+    public void notifyClassStartingSoon(String courseName, String batchName, String teacherEmail) {
+        notificationService.createNotificationForEmail(
                 "Class Starting Soon",
                 courseName + " (" + batchName + ") starts in 15 minutes.",
-                "TEACHER");
+                "TEACHER", teacherEmail);
     }
 }

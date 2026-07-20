@@ -177,6 +177,29 @@ public class AdminController {
             String msg = isNew
                     ? request.getRole() + " registered and credentials emailed successfully"
                     : "Existing student enrolled in new course and notified by email";
+            // Notify teacher when a student is added/enrolled with a course
+            if ("STUDENT".equalsIgnoreCase(request.getRole())
+                    && request.getCourse() != null && !request.getCourse().isBlank()) {
+                String studentName = request.getFirstName() + " " + request.getLastName();
+                String courseTitle = request.getCourse();
+                String teacherEmail = batchRepository.findAll().stream()
+                    .filter(b -> b.getSelectCourse() != null
+                        && b.getSelectCourse().equalsIgnoreCase(courseTitle)
+                        && b.getInstructor() != null && !b.getInstructor().isBlank())
+                    .findFirst()
+                    .map(b -> userRepository.findAll().stream()
+                        .filter(u -> u.getName() != null && u.getName().equalsIgnoreCase(b.getInstructor()))
+                        .map(u -> u.getEmail()).findFirst().orElse(null))
+                    .orElse(null);
+                if (teacherEmail != null) {
+                    appNotificationService.notifyEnrollment(studentName, courseTitle, teacherEmail);
+                } else {
+                    System.out.println(">>> [NOTIFY DEBUG] No teacher email found for course: '" + courseTitle + "'. Check batch instructor name matches user name exactly.");
+                    batchRepository.findAll().stream()
+                        .filter(b -> b.getSelectCourse() != null && b.getSelectCourse().equalsIgnoreCase(courseTitle))
+                        .forEach(b -> System.out.println(">>> [NOTIFY DEBUG] Batch found: '" + b.getBatchName() + "', instructor: '" + b.getInstructor() + "'"));
+                }
+            }
             return ResponseEntity.ok(ApiResponse.ok(msg, user.getId()));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -292,9 +315,20 @@ public class AdminController {
         e.setPaymentStatus(body.getOrDefault("paymentStatus", "Pending"));
         enrollmentRepository.save(e);
         String studentName = s.getUser() != null ? s.getUser().getName() : "A student";
-        appNotificationService.notifyEnrollment(studentName, courseTitle);
-        long total = enrollmentRepository.countByCourseTitleIgnoreCase(courseTitle);
-        if (total % 100 == 0) appNotificationService.notifyMilestone(courseTitle, (int) total);
+        // Find the teacher assigned to this course via batch instructor name
+        String teacherEmail = batchRepository.findAll().stream()
+            .filter(b -> b.getSelectCourse() != null && b.getSelectCourse().equalsIgnoreCase(courseTitle)
+                && b.getInstructor() != null && !b.getInstructor().isBlank())
+            .findFirst()
+            .map(b -> userRepository.findAll().stream()
+                .filter(u -> u.getName() != null && u.getName().equalsIgnoreCase(b.getInstructor()))
+                .map(u -> u.getEmail()).findFirst().orElse(null))
+            .orElse(null);
+        if (teacherEmail != null) {
+            appNotificationService.notifyEnrollment(studentName, courseTitle, teacherEmail);
+            long total = enrollmentRepository.countByCourseTitleIgnoreCase(courseTitle);
+            if (total % 100 == 0) appNotificationService.notifyMilestone(courseTitle, (int) total, teacherEmail);
+        }
         return ResponseEntity.ok(ApiResponse.ok("Student enrolled in " + courseTitle, null));
     }
 

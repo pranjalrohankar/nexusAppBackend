@@ -23,6 +23,7 @@ public class Notification {
     @Column(length = 1000)
     private String message;
     private String receiverRole;
+    private String receiverEmail;
     private boolean seen;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
@@ -34,6 +35,15 @@ public class Notification {
         this.title = title;
         this.message = message;
         this.receiverRole = receiverRole;
+        this.seen = false;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public Notification(String title, String message, String receiverRole, String receiverEmail) {
+        this.title = title;
+        this.message = message;
+        this.receiverRole = receiverRole;
+        this.receiverEmail = receiverEmail;
         this.seen = false;
         this.createdAt = LocalDateTime.now();
     }
@@ -84,5 +94,13 @@ public class Notification {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getReceiverEmail() {
+        return receiverEmail;
+    }
+
+    public void setReceiverEmail(String receiverEmail) {
+        this.receiverEmail = receiverEmail;
     }
 }

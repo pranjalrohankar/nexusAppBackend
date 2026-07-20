@@ -4,6 +4,7 @@ import com.nexus.backend.dto.BatchDto;
 import com.nexus.backend.model.Batch;
 import com.nexus.backend.repository.BatchRepository;
 import com.nexus.backend.repository.EnrollmentRepository;
+import com.nexus.backend.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,12 +20,14 @@ public class BatchService {
     private final BatchRepository batchRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final AppNotificationService appNotificationService;
+    private final UserRepository userRepository;
 
     public BatchService(BatchRepository batchRepository, EnrollmentRepository enrollmentRepository,
-                        AppNotificationService appNotificationService) {
+                        AppNotificationService appNotificationService, UserRepository userRepository) {
         this.batchRepository = batchRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.appNotificationService = appNotificationService;
+        this.userRepository = userRepository;
     }
 
     public Batch createBatch(BatchDto request) {
@@ -72,10 +75,14 @@ public class BatchService {
         batch.setStatus(request.getStatus());
         batch.setClassDays(request.getClassDays());
         Batch saved = batchRepository.save(batch);
-        String schedule = request.getClassDays() != null
-                ? request.getClassDays().toString()
-                : "updated schedule";
-        appNotificationService.notifyScheduleUpdated(batch.getBatchName(), schedule);
+        String schedule = request.getClassDays() != null ? request.getClassDays().toString() : "updated schedule";
+        // Find instructor email by name
+        if (batch.getInstructor() != null && !batch.getInstructor().isBlank()) {
+            userRepository.findAll().stream()
+                .filter(u -> u.getName() != null && u.getName().equalsIgnoreCase(batch.getInstructor()))
+                .map(u -> u.getEmail()).findFirst()
+                .ifPresent(email -> appNotificationService.notifyScheduleUpdated(batch.getBatchName(), schedule, email));
+        }
         return saved;
     }
 

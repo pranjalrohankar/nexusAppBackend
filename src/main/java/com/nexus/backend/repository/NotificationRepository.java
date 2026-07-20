@@ -10,5 +10,7 @@ public interface NotificationRepository extends JpaRepository<Notification,Long>
 
     List<Notification> findByReceiverRoleOrderByCreatedAtDesc(String receiverRole);
     long countByReceiverRoleAndSeenFalse(String receiverRole);
+    List<Notification> findByReceiverEmailOrderByCreatedAtDesc(String receiverEmail);
+    List<Notification> findByReceiverEmailAndSeenFalseOrderByCreatedAtDesc(String receiverEmail);
 
 }
