@@ -1,6 +1,5 @@
 package com.nexus.backend.repository;
 
-import com.nexus.backend.model.Enrollment;
 import com.nexus.backend.model.Notification;
 import org.springframework.data.jpa.repository.JpaRepository;
 
