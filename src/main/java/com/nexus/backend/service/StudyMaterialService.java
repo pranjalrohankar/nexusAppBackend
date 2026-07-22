@@ -82,58 +82,19 @@ public class StudyMaterialService {
 
     // Get All Study Materials
     public List<StudyMaterial> getAllMaterials(String currentEmail, String currentRole) {
-
         logger.info("Fetching study materials for user: {} with role: {}", currentEmail, currentRole);
-
         List<StudyMaterial> materials = repository.findAll();
-
-        if (currentEmail == null || currentEmail.isBlank()) {
-            logger.info("No authenticated user found. Returning all materials.");
-            return materials;
-        }
-
-        if ("ADMIN".equalsIgnoreCase(currentRole)) {
-            logger.info("Admin request. Returning all materials.");
-            return materials;
-        }
-
-        List<StudyMaterial> filteredMaterials = materials.stream()
-                .filter(m -> currentEmail.equalsIgnoreCase(m.getUploadedByEmail()))
-                .toList();
-
-        logger.info("Total study materials found for user {}: {}", currentEmail, filteredMaterials.size());
-
-        return filteredMaterials;
+        return materials;
     }
 
     // Get Study Materials By Course
     public List<StudyMaterial> getMaterialsByCourse(String course, String currentEmail, String currentRole) {
-
         logger.info("Fetching study materials for course: {} by user: {} with role: {}", course, currentEmail, currentRole);
-
         List<StudyMaterial> materials = repository.findAll()
                 .stream()
                 .filter(m -> course.equalsIgnoreCase(m.getCourse()))
                 .toList();
-
-        if (currentEmail == null || currentEmail.isBlank()) {
-            logger.info("No authenticated user found. Returning materials for course {}.", course);
-            return materials;
-        }
-
-        if ("ADMIN".equalsIgnoreCase(currentRole)) {
-            logger.info("Admin request. Returning all materials for course {}.", course);
-            return materials;
-        }
-
-        List<StudyMaterial> filteredMaterials = materials.stream()
-                .filter(m -> currentEmail.equalsIgnoreCase(m.getUploadedByEmail()))
-                .toList();
-
-        logger.info("Found {} study materials for course: {} for user {}",
-                filteredMaterials.size(), course, currentEmail);
-
-        return filteredMaterials;
+        return materials;
     }
 
     public StudyMaterial getMaterialById(Long id) {

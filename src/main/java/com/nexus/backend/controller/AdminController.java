@@ -146,11 +146,13 @@ public class AdminController {
                 m.put("id", b.getId());
                 m.put("course", b.getSelectCourse());
                 m.put("instructor", b.getInstructor() != null ? b.getInstructor() : "");
-                // Get class timings from the matching course
-                String timings = courseRepository.findAll().stream()
-                    .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(b.getSelectCourse())
-                        && c.getClassTimings() != null && !c.getClassTimings().isBlank())
-                    .map(Course::getClassTimings).findFirst().orElse("");
+                // Get class timings from batch first, then fallback to course
+                String timings = (b.getClassTimings() != null && !b.getClassTimings().isBlank())
+                    ? b.getClassTimings()
+                    : courseRepository.findAll().stream()
+                        .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(b.getSelectCourse())
+                            && c.getClassTimings() != null && !c.getClassTimings().isBlank())
+                        .map(Course::getClassTimings).findFirst().orElse("");
                 m.put("time", timings);
                 m.put("studentsCount", enrollmentRepository.countByCourseTitleIgnoreCase(b.getSelectCourse()));
                 return m;

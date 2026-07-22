@@ -39,6 +39,8 @@ public class BatchService {
         batch.setEndDate(request.getEndDate());
         batch.setStatus(request.getStatus());
         batch.setClassDays(request.getClassDays());
+        batch.setClassTimings(request.getClassTimings());
+        batch.setDuration(request.getDuration());
         return batchRepository.save(batch);
     }
 
@@ -55,6 +57,9 @@ public class BatchService {
             batchMap.put("classDays", batch.getClassDays());
             batchMap.put("status", batch.getStatus());
             batchMap.put("createdAt", batch.getCreatedAt());
+            batchMap.put("classTimings", batch.getClassTimings());
+            batchMap.put("courseTimings", batch.getClassTimings());
+            batchMap.put("duration", batch.getDuration());
             
             // Get student count using case-insensitive match
             int studentCount = enrollmentRepository.countByCourseTitleIgnoreCase(batch.getSelectCourse());
@@ -74,6 +79,8 @@ public class BatchService {
         batch.setEndDate(request.getEndDate());
         batch.setStatus(request.getStatus());
         batch.setClassDays(request.getClassDays());
+        batch.setClassTimings(request.getClassTimings());
+        batch.setDuration(request.getDuration());
         Batch saved = batchRepository.save(batch);
         String schedule = request.getClassDays() != null ? request.getClassDays().toString() : "updated schedule";
         // Find instructor email by name
