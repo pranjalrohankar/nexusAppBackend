@@ -13,6 +13,7 @@ import com.nexus.backend.repository.CourseRepository;
 import com.nexus.backend.repository.EnrollmentRepository;
 import com.nexus.backend.repository.StudentRepository;
 import com.nexus.backend.repository.TeacherRepository;
+import com.nexus.backend.repository.TeacherCourseAssignmentRepository;
 import com.nexus.backend.repository.UserRepository;
 import com.nexus.backend.repository.SecuritySettingsRepository;
 import com.nexus.backend.service.UserService;
@@ -39,6 +40,7 @@ public class AdminController {
     private final UserService userService;
     private final StudentRepository studentRepository;
     private final TeacherRepository teacherRepository;
+    private final TeacherCourseAssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final CourseRepository courseRepository;
@@ -335,6 +337,7 @@ public class AdminController {
     }
 
     @DeleteMapping("/students/{id}")
+    @Transactional
     @SuppressWarnings("null")
     public ResponseEntity<ApiResponse> deleteStudent(@PathVariable Long id) {
         Student s = studentRepository.findById(id)
@@ -343,7 +346,14 @@ public class AdminController {
         enrollmentRepository.deleteLegacyEnrollmentsByStudentId(s.getId());
         enrollmentRepository.deleteByStudent(s);
         studentRepository.delete(s);
-        userRepository.delete(user);
+        // Remove any teacher record linked to this user before deleting user
+        if (user != null) {
+            teacherRepository.findByUser(user).ifPresent(t -> {
+                assignmentRepository.deleteAll(assignmentRepository.findByTeacher(t));
+                teacherRepository.delete(t);
+            });
+            userRepository.delete(user);
+        }
         return ResponseEntity.ok(ApiResponse.ok("Student deleted", null));
     }
 
