@@ -59,4 +59,7 @@ public class Batch {
 
     // Class timing string e.g. "2:00 PM - 3:30 PM"
     private String classTimings;
+
+    // Batch duration e.g. "3 Months"
+    private String duration;
 }

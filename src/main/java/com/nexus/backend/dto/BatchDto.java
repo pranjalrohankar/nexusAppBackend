@@ -16,6 +16,9 @@ public class BatchDto{
     private List<ClassDay> classDays;
     private BatchStatus status;
 
+    private String classTimings;
+    private String duration;
+
     public String getBatchName() {
         return batchName;
     }
@@ -36,5 +39,17 @@ public class BatchDto{
     }
     public BatchStatus getStatus() {
         return status;
+    }
+    public String getClassTimings() {
+        return classTimings;
+    }
+    public void setClassTimings(String classTimings) {
+        this.classTimings = classTimings;
+    }
+    public String getDuration() {
+        return duration;
+    }
+    public void setDuration(String duration) {
+        this.duration = duration;
     }
 }
