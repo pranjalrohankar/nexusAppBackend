@@ -10,6 +10,7 @@ import java.nio.file.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class ClassRecordingService {
@@ -44,7 +45,7 @@ public class ClassRecordingService {
         String uploadDir = "uploads/recordings/";
         Files.createDirectories(Paths.get(uploadDir));
 
-        String safeFileName = file.getOriginalFilename().replaceAll("\\s+", "_");
+        String safeFileName = Objects.requireNonNullElse(file.getOriginalFilename(), "recording").replaceAll("\\s+", "_");
         String fileName = System.currentTimeMillis() + "_" + safeFileName;
         Path filePath = Paths.get(uploadDir + fileName);
 
