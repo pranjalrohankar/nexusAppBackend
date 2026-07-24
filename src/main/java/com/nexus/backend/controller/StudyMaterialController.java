@@ -54,10 +54,11 @@ public class StudyMaterialController {
             @RequestParam("description") String description,
             @RequestParam("course") String course,
             @RequestParam("batch") String batch,
-            @RequestParam("fileType") String fileType) {
+            @RequestParam("fileType") String fileType,
+            @RequestParam(value = "topic", required = false, defaultValue = "") String topic) {
 
-        logger.info("Upload request received. Title: {}, Course: {}, Batch: {}",
-                title, course, batch);
+        logger.info("Upload request received. Title: {}, Course: {}, Batch: {}, Topic: {}",
+                title, course, batch, topic);
 
         try {
 
@@ -74,6 +75,7 @@ public class StudyMaterialController {
                     course,
                     batch,
                     fileType,
+                    topic,
                     currentEmail,
                     currentRole
             );

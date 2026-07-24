@@ -26,6 +26,8 @@ public class StudyMaterial {
 
     private String batch;
 
+    private String topic;
+
     private String fileType;
 
     private String fileName;
