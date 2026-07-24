@@ -126,13 +126,14 @@ public class TeacherController {
                 m.put("status", batch.getStatus());
                 int studentCount = enrollmentRepository.countByCourseTitleIgnoreCase(batch.getSelectCourse());
                 m.put("studentsCount", studentCount);
+                m.put("duration", batch.getDuration());
                 // Enrich with course details
                 courseRepository.findAll().stream()
                     .filter(c -> c.getTitle().equalsIgnoreCase(batch.getSelectCourse()))
                     .findFirst()
                     .ifPresent(c -> {
                         m.put("classTimings", c.getClassTimings());
-                        m.put("duration", c.getDuration());
+                        m.put("duration", batch.getDuration() != null && !batch.getDuration().isBlank() ? batch.getDuration() : c.getDuration());
                         String link = c.getGoogleMeetLink() != null ? c.getGoogleMeetLink() : c.getMeetLink();
                         m.put("googleMeetLink", link);
                         m.put("totalSessions", c.getTotalSessions());
