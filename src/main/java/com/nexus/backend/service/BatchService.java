@@ -33,7 +33,7 @@ public class BatchService {
     public Batch createBatch(BatchDto request) {
         Batch batch = new Batch();
         batch.setBatchName(request.getBatchName());
-        batch.setSelectCourse(request.getselectCourse());
+        batch.setSelectCourse(request.getSelectCourse());
         batch.setInstructor(request.getInstructor());
         batch.setStartDate(request.getStartDate());
         batch.setEndDate(request.getEndDate());
@@ -60,11 +60,10 @@ public class BatchService {
             batchMap.put("classTimings", batch.getClassTimings());
             batchMap.put("courseTimings", batch.getClassTimings());
             batchMap.put("duration", batch.getDuration());
-            
-            // Get student count using case-insensitive match
+
             int studentCount = enrollmentRepository.countByCourseTitleIgnoreCase(batch.getSelectCourse());
             batchMap.put("studentsCount", studentCount);
-            
+
             return batchMap;
         }).collect(Collectors.toList());
     }
@@ -73,7 +72,7 @@ public class BatchService {
         Batch batch = batchRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Batch not found"));
         batch.setBatchName(request.getBatchName());
-        batch.setSelectCourse(request.getselectCourse());
+        batch.setSelectCourse(request.getSelectCourse());
         batch.setInstructor(request.getInstructor());
         batch.setStartDate(request.getStartDate());
         batch.setEndDate(request.getEndDate());
@@ -83,7 +82,6 @@ public class BatchService {
         batch.setDuration(request.getDuration());
         Batch saved = batchRepository.save(batch);
         String schedule = request.getClassDays() != null ? request.getClassDays().toString() : "updated schedule";
-        // Find instructor email by name
         if (batch.getInstructor() != null && !batch.getInstructor().isBlank()) {
             userRepository.findAll().stream()
                 .filter(u -> u.getName() != null && u.getName().equalsIgnoreCase(batch.getInstructor()))

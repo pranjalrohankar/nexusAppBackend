@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/materials/**").permitAll()
                 .requestMatchers("/api/recordings/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/courses", "/api/courses/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/courses/*/meet-link").hasAnyRole("ADMIN", "TEACHER")
                 .requestMatchers("/api/courses", "/api/courses/**").hasRole("ADMIN")
                 .requestMatchers("/api/enrollments/count/course").permitAll()
                 .requestMatchers("/api/student/materials", "/api/student/recordings").hasAnyRole("STUDENT", "TEACHER", "ADMIN")

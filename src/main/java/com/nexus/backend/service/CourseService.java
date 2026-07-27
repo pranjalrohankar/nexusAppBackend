@@ -79,6 +79,10 @@ public class CourseService {
         return repository.save(existing);
     }
 
+    public Course saveCourse(@NonNull Course course) {
+        return repository.save(course);
+    }
+
     public void deleteCourse(@NonNull Long id) {
         if (!repository.existsById(id)) {
             throw new EntityNotFoundException("Course not found with id: " + id);

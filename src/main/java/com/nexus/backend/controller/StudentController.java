@@ -204,12 +204,20 @@ public class StudentController {
                         ? batch.getClassDays().stream().map(Enum::name).collect(Collectors.toList())
                         : Collections.emptyList();
                 dto.put("classDays", days);
-                // Get classTimings from Course
-                String timings = courseRepository.findAll().stream()
-                        .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(e.getCourseTitle()))
-                        .map(c -> c.getClassTimings() != null ? c.getClassTimings() : "")
-                        .findFirst().orElse("");
+                // Get classTimings from Batch first, fallback to Course
+                String timings = batch.getClassTimings() != null && !batch.getClassTimings().isBlank()
+                        ? batch.getClassTimings()
+                        : courseRepository.findAll().stream()
+                            .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(e.getCourseTitle()))
+                            .map(c -> c.getClassTimings() != null ? c.getClassTimings() : "")
+                            .findFirst().orElse("");
                 dto.put("classTimings", timings);
+                // Also include googleMeetLink from course
+                String meetLink = courseRepository.findAll().stream()
+                        .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(e.getCourseTitle()))
+                        .map(c -> c.getGoogleMeetLink() != null ? c.getGoogleMeetLink() : (c.getMeetLink() != null ? c.getMeetLink() : ""))
+                        .findFirst().orElse("");
+                dto.put("googleMeetLink", meetLink);
             } else {
                 dto.put("batchName", "");
                 dto.put("instructor", "");
