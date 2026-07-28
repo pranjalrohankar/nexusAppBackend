@@ -42,12 +42,13 @@ public class ClassRecordingService {
             throw new IllegalArgumentException("Only MP4, MKV, MOV and AVI videos are allowed.");
         }
 
-        String uploadDir = "uploads/recordings/";
-        Files.createDirectories(Paths.get(uploadDir));
+        String uploadDir = "uploads/recordings";
+        Path uploadPath = Paths.get(uploadDir);
+        Files.createDirectories(uploadPath);
 
         String safeFileName = Objects.requireNonNullElse(file.getOriginalFilename(), "recording").replaceAll("\\s+", "_");
         String fileName = System.currentTimeMillis() + "_" + safeFileName;
-        Path filePath = Paths.get(uploadDir + fileName);
+        Path filePath = uploadPath.resolve(fileName);
 
         // Stream directly to disk — no RAM load, works for 1-2 hour videos
         file.transferTo(filePath.toAbsolutePath());
@@ -60,15 +61,34 @@ public class ClassRecordingService {
         recording.setCourse(course);
         recording.setBatch(batch);
         recording.setFileName(fileName);
-        recording.setFilePath(filePath.toString());  // relative path — consistent
-        recording.setFileUrl("/uploads/recordings/" + fileName);
+        recording.setFilePath("uploads/recordings/" + fileName);
         recording.setFileSize(file.getSize());
         recording.setFileType(contentType);
         recording.setUploadedByEmail(uploadedByEmail);
         recording.setUploadedByRole(uploadedByRole);
         recording.setUploadedAt(LocalDateTime.now());
 
-        return repository.save(recording);
+        ClassRecording saved = repository.save(recording);
+        saved.setFileUrl("/api/recordings/stream/" + saved.getId());
+        return repository.save(saved);
+    }
+
+    public static Path resolveFilePath(String storedFilePath, String fileName) {
+        if (fileName != null && !fileName.isBlank()) {
+            Path p1 = Paths.get("uploads", "recordings", fileName);
+            if (Files.exists(p1)) return p1;
+        }
+        if (storedFilePath != null && !storedFilePath.isBlank()) {
+            Path p2 = Paths.get(storedFilePath);
+            if (Files.exists(p2)) return p2;
+
+            Path nameOnly = p2.getFileName();
+            if (nameOnly != null) {
+                Path p3 = Paths.get("uploads", "recordings", nameOnly.toString());
+                if (Files.exists(p3)) return p3;
+            }
+        }
+        return Paths.get("uploads", "recordings", fileName != null ? fileName : "");
     }
 
     public List<ClassRecording> getAllRecordings(String currentEmail, String currentRole) {
@@ -88,14 +108,8 @@ public class ClassRecordingService {
     public void deleteRecording(Long id) throws IOException {
         ClassRecording recording = getRecordingById(id);
 
-        if (recording.getFilePath() != null) {
-            // Try the stored path first, then try as relative from working dir
-            Path p = Paths.get(recording.getFilePath());
-            if (!Files.deleteIfExists(p)) {
-                // fallback: try relative path
-                Files.deleteIfExists(Paths.get("uploads/recordings/" + recording.getFileName()));
-            }
-        }
+        Path p = resolveFilePath(recording.getFilePath(), recording.getFileName());
+        Files.deleteIfExists(p);
 
         repository.deleteById(id);
     }

@@ -47,13 +47,15 @@ public class StudyMaterialService {
             throw new IllegalArgumentException("Uploaded file is required.");
         }
 
-        String uploadDir = "uploads/materials/";
+        String uploadDir = "uploads/materials";
+        Path uploadPath = Paths.get(uploadDir);
+        Files.createDirectories(uploadPath);
 
-        Files.createDirectories(Paths.get(uploadDir));
+        String safeFileName = (file.getOriginalFilename() != null ? file.getOriginalFilename() : "material")
+                .replaceAll("\\s+", "_");
+        String fileName = System.currentTimeMillis() + "_" + safeFileName;
 
-        String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-
-        Path filePath = Paths.get(uploadDir + fileName);
+        Path filePath = uploadPath.resolve(fileName);
 
         Files.write(filePath, file.getBytes());
 
@@ -67,7 +69,7 @@ public class StudyMaterialService {
         material.setTopic(topic != null ? topic.trim() : "");
         material.setFileType(fileType);
         material.setFileName(fileName);
-        material.setFilePath(filePath.toAbsolutePath().toString());
+        material.setFilePath("uploads/materials/" + fileName);
         material.setUploadedByEmail(uploadedByEmail);
         material.setUploadedByRole(uploadedByRole);
         material.setUploadedAt(LocalDateTime.now());
@@ -80,6 +82,24 @@ public class StudyMaterialService {
                 savedMaterial.getId());
 
         return savedMaterial;
+    }
+
+    public static Path resolveFilePath(String storedFilePath, String fileName) {
+        if (fileName != null && !fileName.isBlank()) {
+            Path p1 = Paths.get("uploads", "materials", fileName);
+            if (Files.exists(p1)) return p1;
+        }
+        if (storedFilePath != null && !storedFilePath.isBlank()) {
+            Path p2 = Paths.get(storedFilePath);
+            if (Files.exists(p2)) return p2;
+
+            Path nameOnly = p2.getFileName();
+            if (nameOnly != null) {
+                Path p3 = Paths.get("uploads", "materials", nameOnly.toString());
+                if (Files.exists(p3)) return p3;
+            }
+        }
+        return Paths.get("uploads", "materials", fileName != null ? fileName : "");
     }
 
     // Get All Study Materials
@@ -121,6 +141,16 @@ public class StudyMaterialService {
             logger.warn("Delete operation failed. Material ID is null.");
 
             throw new IllegalArgumentException("Material ID must not be null.");
+        }
+
+        StudyMaterial material = repository.findById(id).orElse(null);
+        if (material != null) {
+            Path path = resolveFilePath(material.getFilePath(), material.getFileName());
+            try {
+                Files.deleteIfExists(path);
+            } catch (IOException e) {
+                logger.warn("Could not delete file from disk: {}", path, e);
+            }
         }
 
         repository.deleteById(id);

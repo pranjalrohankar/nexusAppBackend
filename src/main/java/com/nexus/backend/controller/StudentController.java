@@ -186,11 +186,48 @@ public class StudentController {
             dto.put("enrollmentDate", e.getEnrollmentDate() != null ? e.getEnrollmentDate() : "");
             dto.put("paymentStatus", e.getPaymentStatus() != null ? e.getPaymentStatus() : "");
 
+            String enrollTitle = e.getCourseTitle() != null ? e.getCourseTitle().trim().toLowerCase() : "";
+
             // Find matching batch
             List<Batch> batches = batchRepository.findAll().stream()
-                    .filter(b -> b.getSelectCourse() != null &&
-                            b.getSelectCourse().equalsIgnoreCase(e.getCourseTitle()))
+                    .filter(b -> b.getSelectCourse() != null && (
+                            b.getSelectCourse().trim().equalsIgnoreCase(e.getCourseTitle()) ||
+                            b.getSelectCourse().toLowerCase().contains(enrollTitle) ||
+                            (!enrollTitle.isEmpty() && enrollTitle.contains(b.getSelectCourse().toLowerCase()))
+                    ))
                     .collect(Collectors.toList());
+
+            // Get Course details (classTimings, syllabusTopics, whatYouWillLearn)
+            Optional<Course> courseOpt = courseRepository.findAll().stream()
+                    .filter(c -> {
+                        if (c.getTitle() == null) return false;
+                        String t = c.getTitle().trim().toLowerCase();
+                        return t.equalsIgnoreCase(e.getCourseTitle()) ||
+                               (!enrollTitle.isEmpty() && (t.contains(enrollTitle) || enrollTitle.contains(t)));
+                    })
+                    .findFirst();
+
+            if (courseOpt.isEmpty() && !batches.isEmpty() && batches.get(0).getSelectCourse() != null) {
+                String selectCourse = batches.get(0).getSelectCourse().trim().toLowerCase();
+                courseOpt = courseRepository.findAll().stream()
+                        .filter(c -> c.getTitle() != null && (
+                                c.getTitle().trim().toLowerCase().equals(selectCourse) ||
+                                c.getTitle().trim().toLowerCase().contains(selectCourse) ||
+                                selectCourse.contains(c.getTitle().trim().toLowerCase())
+                        ))
+                        .findFirst();
+            }
+
+            if (courseOpt.isPresent()) {
+                Course course = courseOpt.get();
+                dto.put("classTimings", course.getClassTimings() != null ? course.getClassTimings() : "");
+                dto.put("syllabusTopics", course.getSyllabusTopics() != null ? course.getSyllabusTopics() : "");
+                dto.put("whatYouWillLearn", course.getWhatYouWillLearn() != null ? course.getWhatYouWillLearn() : "");
+            } else {
+                dto.put("classTimings", "");
+                dto.put("syllabusTopics", "");
+                dto.put("whatYouWillLearn", "");
+            }
 
             if (!batches.isEmpty()) {
                 Batch batch = batches.get(0);
@@ -204,20 +241,6 @@ public class StudentController {
                         ? batch.getClassDays().stream().map(Enum::name).collect(Collectors.toList())
                         : Collections.emptyList();
                 dto.put("classDays", days);
-                // Get classTimings from Batch first, fallback to Course
-                String timings = batch.getClassTimings() != null && !batch.getClassTimings().isBlank()
-                        ? batch.getClassTimings()
-                        : courseRepository.findAll().stream()
-                            .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(e.getCourseTitle()))
-                            .map(c -> c.getClassTimings() != null ? c.getClassTimings() : "")
-                            .findFirst().orElse("");
-                dto.put("classTimings", timings);
-                // Also include googleMeetLink from course
-                String meetLink = courseRepository.findAll().stream()
-                        .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(e.getCourseTitle()))
-                        .map(c -> c.getGoogleMeetLink() != null ? c.getGoogleMeetLink() : (c.getMeetLink() != null ? c.getMeetLink() : ""))
-                        .findFirst().orElse("");
-                dto.put("googleMeetLink", meetLink);
             } else {
                 dto.put("batchName", "");
                 dto.put("instructor", "");
