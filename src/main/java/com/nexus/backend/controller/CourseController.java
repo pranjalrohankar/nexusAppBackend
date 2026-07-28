@@ -14,6 +14,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -86,6 +87,22 @@ public class CourseController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.deleteCourse(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/meet-link")
+    public ResponseEntity<Map<String, Object>> updateMeetLink(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        try {
+            Course existing = service.getCourseById(id);
+            String link = body.get("googleMeetLink");
+            existing.setGoogleMeetLink(link);
+            existing.setMeetLink(link);
+            service.saveCourse(existing);
+            return ResponseEntity.ok(Map.of("success", true, "googleMeetLink", link != null ? link : ""));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
+        }
     }
 
     // Simple mappers; consider using MapStruct for larger projects
