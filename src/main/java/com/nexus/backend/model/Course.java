@@ -50,10 +50,10 @@ public class Course {
     @Column(name = "instructor")
     private String instructor;
 
-    @Column(name = "syllabus_topics")
+    @Column(name = "syllabus_topics", columnDefinition = "TEXT")
     private String syllabusTopics;
 
-    @Column(name = "what_you_will_learn")
+    @Column(name = "what_you_will_learn", columnDefinition = "TEXT")
     private String whatYouWillLearn;
 
     @Column(name = "google_meet_link")

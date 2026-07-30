@@ -120,19 +120,23 @@ public class TeacherController {
                 m.put("batchName", batch.getBatchName());
                 m.put("selectCourse", batch.getSelectCourse());
                 m.put("instructor", batch.getInstructor());
-                m.put("startDate", batch.getStartDate());
-                m.put("endDate", batch.getEndDate());
+                m.put("startDate", batch.getStartDate() != null ? batch.getStartDate().toString() : null);
+                m.put("endDate", batch.getEndDate() != null ? batch.getEndDate().toString() : null);
                 m.put("classDays", batch.getClassDays());
                 m.put("status", batch.getStatus());
                 int studentCount = enrollmentRepository.countByCourseTitleIgnoreCase(batch.getSelectCourse());
                 m.put("studentsCount", studentCount);
-                // Enrich with course details
+                m.put("duration", batch.getDuration());
+                m.put("classTimings", batch.getClassTimings()); // always from batch only
+                m.put("totalSessions", null); // default, overridden by course below
+                m.put("courseId", null); // default, overridden by course below
+                // Enrich with course details (never override classTimings)
                 courseRepository.findAll().stream()
                     .filter(c -> c.getTitle().equalsIgnoreCase(batch.getSelectCourse()))
                     .findFirst()
                     .ifPresent(c -> {
-                        m.put("classTimings", c.getClassTimings());
-                        m.put("duration", c.getDuration());
+                        m.put("courseId", c.getId());
+                        m.put("duration", batch.getDuration() != null && !batch.getDuration().isBlank() ? batch.getDuration() : c.getDuration());
                         String link = c.getGoogleMeetLink() != null ? c.getGoogleMeetLink() : c.getMeetLink();
                         m.put("googleMeetLink", link);
                         m.put("totalSessions", c.getTotalSessions());

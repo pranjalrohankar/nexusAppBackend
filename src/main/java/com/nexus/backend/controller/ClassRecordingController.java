@@ -85,11 +85,8 @@ public class ClassRecordingController {
     ) {
         try {
             ClassRecording recording = recordingService.getRecordingById(id);
-            if (recording.getFilePath() == null) {
-                return ResponseEntity.notFound().build();
-            }
 
-            Path filePath = Paths.get(recording.getFilePath());
+            Path filePath = ClassRecordingService.resolveFilePath(recording.getFilePath(), recording.getFileName());
             if (!Files.exists(filePath)) {
                 return ResponseEntity.notFound().build();
             }
