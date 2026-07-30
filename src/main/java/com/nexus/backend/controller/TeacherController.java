@@ -153,15 +153,22 @@ public class TeacherController {
                 m.put("classTimings", batch.getClassTimings()); // always from batch only
                 m.put("totalSessions", null); // default, overridden by course below
                 m.put("courseId", null); // default, overridden by course below
+                String batchMeetLink = (batch.getGoogleMeetLink() != null && !batch.getGoogleMeetLink().isBlank())
+                    ? batch.getGoogleMeetLink()
+                    : "";
+                m.put("googleMeetLink", batchMeetLink);
+
                 // Enrich with course details (never override classTimings)
                 courseRepository.findAll().stream()
-                    .filter(c -> c.getTitle().equalsIgnoreCase(batch.getSelectCourse()))
+                    .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(batch.getSelectCourse()))
                     .findFirst()
                     .ifPresent(c -> {
                         m.put("courseId", c.getId());
                         m.put("duration", batch.getDuration() != null && !batch.getDuration().isBlank() ? batch.getDuration() : c.getDuration());
-                        String link = c.getGoogleMeetLink() != null ? c.getGoogleMeetLink() : c.getMeetLink();
-                        m.put("googleMeetLink", link);
+                        if (batchMeetLink.isBlank()) {
+                            String link = c.getGoogleMeetLink() != null ? c.getGoogleMeetLink() : c.getMeetLink();
+                            m.put("googleMeetLink", link != null ? link : "");
+                        }
                         m.put("totalSessions", c.getTotalSessions());
                         m.put("syllabusTopics", c.getSyllabusTopics());
                     });

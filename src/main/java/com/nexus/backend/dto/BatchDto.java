@@ -17,6 +17,7 @@ public class BatchDto{
     private BatchStatus status;
     private String classTimings;
     private String duration;
+    private String googleMeetLink;
 
     public String getBatchName() { return batchName; }
     public void setBatchName(String batchName) { this.batchName = batchName; }
@@ -44,4 +45,7 @@ public class BatchDto{
 
     public String getDuration() { return duration; }
     public void setDuration(String duration) { this.duration = duration; }
+
+    public String getGoogleMeetLink() { return googleMeetLink; }
+    public void setGoogleMeetLink(String googleMeetLink) { this.googleMeetLink = googleMeetLink; }
 }

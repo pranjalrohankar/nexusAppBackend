@@ -21,13 +21,16 @@ public class BatchService {
     private final EnrollmentRepository enrollmentRepository;
     private final AppNotificationService appNotificationService;
     private final UserRepository userRepository;
+    private final com.nexus.backend.repository.CourseRepository courseRepository;
 
     public BatchService(BatchRepository batchRepository, EnrollmentRepository enrollmentRepository,
-                        AppNotificationService appNotificationService, UserRepository userRepository) {
+                        AppNotificationService appNotificationService, UserRepository userRepository,
+                        com.nexus.backend.repository.CourseRepository courseRepository) {
         this.batchRepository = batchRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.appNotificationService = appNotificationService;
         this.userRepository = userRepository;
+        this.courseRepository = courseRepository;
     }
 
     public Batch createBatch(BatchDto request) {
@@ -41,31 +44,58 @@ public class BatchService {
         batch.setClassDays(request.getClassDays());
         batch.setClassTimings(request.getClassTimings());
         batch.setDuration(request.getDuration());
+        if (request.getGoogleMeetLink() != null && !request.getGoogleMeetLink().isBlank()) {
+            batch.setGoogleMeetLink(request.getGoogleMeetLink());
+        }
         return batchRepository.save(batch);
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> getAllBatches() {
-        List<Batch> batches = batchRepository.findAll();
-        return batches.stream().map(batch -> {
-            Map<String, Object> batchMap = new HashMap<>();
-            batchMap.put("id", batch.getId());
-            batchMap.put("batchName", batch.getBatchName());
-            batchMap.put("selectCourse", batch.getSelectCourse());
-            batchMap.put("instructor", batch.getInstructor());
-            batchMap.put("startDate", batch.getStartDate());
-            batchMap.put("endDate", batch.getEndDate());
-            batchMap.put("classDays", batch.getClassDays());
-            batchMap.put("status", batch.getStatus());
-            batchMap.put("createdAt", batch.getCreatedAt());
-            batchMap.put("classTimings", batch.getClassTimings());
-            batchMap.put("courseTimings", batch.getClassTimings());
-            batchMap.put("duration", batch.getDuration());
+        try {
+            List<Batch> batches = batchRepository.findAll();
+            List<com.nexus.backend.model.Course> allCourses = courseRepository.findAll();
+            return batches.stream().map(batch -> {
+                Map<String, Object> batchMap = new HashMap<>();
+                batchMap.put("id", batch.getId());
+                batchMap.put("batchName", batch.getBatchName() != null ? batch.getBatchName() : "");
+                batchMap.put("selectCourse", batch.getSelectCourse() != null ? batch.getSelectCourse() : "");
+                batchMap.put("instructor", batch.getInstructor() != null ? batch.getInstructor() : "");
+                batchMap.put("startDate", batch.getStartDate());
+                batchMap.put("endDate", batch.getEndDate());
+                batchMap.put("classDays", batch.getClassDays() != null ? batch.getClassDays() : java.util.Collections.emptyList());
+                batchMap.put("status", batch.getStatus());
+                batchMap.put("createdAt", batch.getCreatedAt());
+                batchMap.put("classTimings", batch.getClassTimings() != null ? batch.getClassTimings() : "");
+                batchMap.put("courseTimings", batch.getClassTimings() != null ? batch.getClassTimings() : "");
+                batchMap.put("duration", batch.getDuration() != null ? batch.getDuration() : "");
 
-            int studentCount = enrollmentRepository.countByCourseTitleIgnoreCase(batch.getSelectCourse());
-            batchMap.put("studentsCount", studentCount);
+                String selectCourse = batch.getSelectCourse();
+                String meetLink = "";
+                if (batch.getGoogleMeetLink() != null && !batch.getGoogleMeetLink().isBlank()) {
+                    meetLink = batch.getGoogleMeetLink();
+                } else if (selectCourse != null && !selectCourse.isBlank()) {
+                    meetLink = allCourses.stream()
+                        .filter(c -> c != null && c.getTitle() != null && c.getTitle().equalsIgnoreCase(selectCourse.trim()))
+                        .map(c -> c.getGoogleMeetLink() != null && !c.getGoogleMeetLink().isBlank() ? c.getGoogleMeetLink() : (c.getMeetLink() != null ? c.getMeetLink() : ""))
+                        .filter(l -> l != null && !l.isBlank())
+                        .findFirst().orElse("");
+                }
+                batchMap.put("googleMeetLink", meetLink);
 
-            return batchMap;
-        }).collect(Collectors.toList());
+                int studentCount = 0;
+                if (selectCourse != null && !selectCourse.isBlank()) {
+                    try {
+                        studentCount = enrollmentRepository.countByCourseTitleIgnoreCase(selectCourse.trim());
+                    } catch (Exception ignored) {}
+                }
+                batchMap.put("studentsCount", studentCount);
+
+                return batchMap;
+            }).collect(Collectors.toList());
+        } catch (Exception e) {
+            return java.util.Collections.emptyList();
+        }
     }
 
     public Batch updateBatch(Long id, BatchDto request) {
@@ -80,6 +110,17 @@ public class BatchService {
         batch.setClassDays(request.getClassDays());
         batch.setClassTimings(request.getClassTimings());
         batch.setDuration(request.getDuration());
+        if (request.getGoogleMeetLink() != null) {
+            batch.setGoogleMeetLink(request.getGoogleMeetLink());
+            // Sync to course
+            courseRepository.findAll().stream()
+                .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(batch.getSelectCourse()))
+                .forEach(c -> {
+                    c.setGoogleMeetLink(request.getGoogleMeetLink());
+                    c.setMeetLink(request.getGoogleMeetLink());
+                    courseRepository.save(c);
+                });
+        }
         Batch saved = batchRepository.save(batch);
         String schedule = request.getClassDays() != null ? request.getClassDays().toString() : "updated schedule";
         if (batch.getInstructor() != null && !batch.getInstructor().isBlank()) {

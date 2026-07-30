@@ -62,4 +62,7 @@ public class Batch {
 
     // Batch duration e.g. "3 Months"
     private String duration;
+
+    // Google Meet link for online classes
+    private String googleMeetLink;
 }

@@ -23,10 +23,13 @@ public class CourseController {
 
     private final CourseService service;
     private final EnrollmentRepository enrollmentRepository;
+    private final com.nexus.backend.repository.BatchRepository batchRepository;
 
-    public CourseController(CourseService service, EnrollmentRepository enrollmentRepository) {
+    public CourseController(CourseService service, EnrollmentRepository enrollmentRepository,
+                            com.nexus.backend.repository.BatchRepository batchRepository) {
         this.service = service;
         this.enrollmentRepository = enrollmentRepository;
+        this.batchRepository = batchRepository;
     }
 
     @PostMapping
@@ -80,6 +83,14 @@ public class CourseController {
     @PutMapping("/{id}")
     public ResponseEntity<CourseDto> update(@PathVariable Long id, @Valid @RequestBody CourseDto dto) {
         Course updated = service.updateCourse(id, toEntity(dto));
+        if (dto.getGoogleMeetLink() != null) {
+            batchRepository.findAll().stream()
+                .filter(b -> b.getSelectCourse() != null && b.getSelectCourse().equalsIgnoreCase(updated.getTitle()))
+                .forEach(b -> {
+                    b.setGoogleMeetLink(dto.getGoogleMeetLink());
+                    batchRepository.save(b);
+                });
+        }
         return ResponseEntity.ok(toDto(updated));
     }
 
@@ -96,9 +107,20 @@ public class CourseController {
         try {
             Course existing = service.getCourseById(id);
             String link = body.get("googleMeetLink");
+            if (link == null) link = body.get("meetLink");
             existing.setGoogleMeetLink(link);
             existing.setMeetLink(link);
             service.saveCourse(existing);
+
+            final String finalLink = link;
+            if (existing.getTitle() != null) {
+                batchRepository.findAll().stream()
+                    .filter(b -> b.getSelectCourse() != null && b.getSelectCourse().equalsIgnoreCase(existing.getTitle()))
+                    .forEach(b -> {
+                        b.setGoogleMeetLink(finalLink);
+                        batchRepository.save(b);
+                    });
+            }
             return ResponseEntity.ok(Map.of("success", true, "googleMeetLink", link != null ? link : ""));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));

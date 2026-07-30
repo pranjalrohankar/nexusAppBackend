@@ -166,6 +166,15 @@ public class StudentController {
                 dto.put("classTimings", b.getClassTimings() != null ? b.getClassTimings() : "");
                 dto.put("isToday", b.getClassDays().contains(todayDay));
                 dto.put("instructor", b.getInstructor() != null ? b.getInstructor() : "");
+
+                String meetLink = (b.getGoogleMeetLink() != null && !b.getGoogleMeetLink().isBlank())
+                    ? b.getGoogleMeetLink()
+                    : courseRepository.findAll().stream()
+                        .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(b.getSelectCourse()))
+                        .map(c -> c.getGoogleMeetLink() != null ? c.getGoogleMeetLink() : c.getMeetLink())
+                        .findFirst().orElse("");
+                dto.put("googleMeetLink", meetLink);
+
                 return dto;
             }).collect(Collectors.toList());
         return ResponseEntity.ok(result);
@@ -228,6 +237,14 @@ public class StudentController {
                 dto.put("syllabusTopics", "");
                 dto.put("whatYouWillLearn", "");
             }
+
+            String meetLink = "";
+            if (!batches.isEmpty() && batches.get(0).getGoogleMeetLink() != null && !batches.get(0).getGoogleMeetLink().isBlank()) {
+                meetLink = batches.get(0).getGoogleMeetLink();
+            } else if (courseOpt.isPresent()) {
+                meetLink = courseOpt.get().getGoogleMeetLink() != null ? courseOpt.get().getGoogleMeetLink() : courseOpt.get().getMeetLink();
+            }
+            dto.put("googleMeetLink", meetLink != null ? meetLink : "");
 
             if (!batches.isEmpty()) {
                 Batch batch = batches.get(0);
