@@ -18,6 +18,7 @@ public class TeacherStatsDTO {
     private String phone;
     private String joinDate;
     private String status;
+    private String onlineStatus;
     private String qualification;
     private String experience;
     private String specialization;

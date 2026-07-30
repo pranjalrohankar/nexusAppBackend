@@ -101,8 +101,24 @@ public class TeacherController {
         }
     }
 
+    private com.nexus.backend.enums.BatchStatus calculateEffectiveStatus(com.nexus.backend.model.Batch batch) {
+        LocalDate now = LocalDate.now();
+        if (batch.getStartDate() != null) {
+            if (now.isBefore(batch.getStartDate())) {
+                return com.nexus.backend.enums.BatchStatus.UPCOMING;
+            }
+            if (batch.getEndDate() != null && now.isAfter(batch.getEndDate())) {
+                return com.nexus.backend.enums.BatchStatus.COMPLETED;
+            }
+            if (batch.getEndDate() != null && !now.isBefore(batch.getStartDate()) && !now.isAfter(batch.getEndDate())) {
+                return com.nexus.backend.enums.BatchStatus.ACTIVE;
+            }
+        }
+        return batch.getStatus() != null ? batch.getStatus() : com.nexus.backend.enums.BatchStatus.ACTIVE;
+    }
+
     @GetMapping("/my-batches")
-    public ResponseEntity<Map<String, Object>> getMyBatches() {
+    public ResponseEntity<Map<String, Object>> getMyBatches(@RequestParam(required = false) String status) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             String email = (String) auth.getPrincipal();
@@ -114,8 +130,15 @@ public class TeacherController {
             String teacherName = teacherOpt.get().getName();
             List<com.nexus.backend.model.Batch> batches = batchRepository.findByInstructorIgnoreCase(teacherName);
 
+            if (status != null && !status.isBlank()) {
+                batches = batches.stream()
+                    .filter(b -> calculateEffectiveStatus(b).name().equalsIgnoreCase(status.trim()))
+                    .collect(Collectors.toList());
+            }
+
             List<Map<String, Object>> result = batches.stream().map(batch -> {
                 Map<String, Object> m = new HashMap<>();
+                com.nexus.backend.enums.BatchStatus effectiveStatus = calculateEffectiveStatus(batch);
                 m.put("id", batch.getId());
                 m.put("batchName", batch.getBatchName());
                 m.put("selectCourse", batch.getSelectCourse());
@@ -123,7 +146,7 @@ public class TeacherController {
                 m.put("startDate", batch.getStartDate() != null ? batch.getStartDate().toString() : null);
                 m.put("endDate", batch.getEndDate() != null ? batch.getEndDate().toString() : null);
                 m.put("classDays", batch.getClassDays());
-                m.put("status", batch.getStatus());
+                m.put("status", effectiveStatus);
                 int studentCount = enrollmentRepository.countByCourseTitleIgnoreCase(batch.getSelectCourse());
                 m.put("studentsCount", studentCount);
                 m.put("duration", batch.getDuration());
@@ -140,6 +163,7 @@ public class TeacherController {
                         String link = c.getGoogleMeetLink() != null ? c.getGoogleMeetLink() : c.getMeetLink();
                         m.put("googleMeetLink", link);
                         m.put("totalSessions", c.getTotalSessions());
+                        m.put("syllabusTopics", c.getSyllabusTopics());
                     });
                 return m;
             }).collect(Collectors.toList());
@@ -246,7 +270,10 @@ public class TeacherController {
             response.put("data", teacherStats);
             response.put("totalCount", teachers.size());
             response.put("activeCount", teacherStats.stream()
-                .filter(t -> "Active".equals(t.getStatus()))
+                .filter(t -> "online".equals(t.getOnlineStatus()) || "always_online".equals(t.getOnlineStatus()))
+                .count());
+            response.put("inactiveCount", teacherStats.stream()
+                .filter(t -> !"online".equals(t.getOnlineStatus()) && !"always_online".equals(t.getOnlineStatus()))
                 .count());
             response.put("totalStudents", (int) enrollmentRepository.count());
             
@@ -335,6 +362,13 @@ public class TeacherController {
             if (updates.containsKey("experience")) teacher.setExperience((String) updates.get("experience"));
             if (updates.containsKey("specialization")) teacher.setSpecialization((String) updates.get("specialization"));
             if (updates.containsKey("employmentType")) teacher.setEmploymentType((String) updates.get("employmentType"));
+            if (updates.containsKey("status") && teacher.getUser() != null) {
+                boolean active = "Active".equalsIgnoreCase((String) updates.get("status"));
+                teacher.getUser().setActive(active);
+            } else if (updates.containsKey("active") && teacher.getUser() != null) {
+                boolean active = Boolean.TRUE.equals(updates.get("active")) || "true".equalsIgnoreCase(String.valueOf(updates.get("active")));
+                teacher.getUser().setActive(active);
+            }
 
             teacherRepository.save(teacher);
             if (teacher.getUser() != null) {
@@ -532,13 +566,24 @@ public class TeacherController {
         int studentsCount = allCourseTitles.isEmpty() ? 0
             : enrollmentRepository.countByCourseTitleIn(new ArrayList<>(allCourseTitles));
 
+        String teacherStatus = (teacher.getUser() != null && !teacher.getUser().isActive()) ? "Inactive" : "Active";
+
+        String onlineStatus = "offline";
+        if (teacher.getUser() != null) {
+            com.nexus.backend.model.SecuritySettings ss = securitySettingsRepository.findByUserId(teacher.getUser().getId()).orElse(null);
+            boolean activityEnabled = ss == null || ss.isActivityStatusEnabled();
+            boolean isOnline = ss != null && ss.isOnline();
+            onlineStatus = activityEnabled ? (isOnline ? "online" : "offline") : "always_online";
+        }
+
         return TeacherStatsDTO.builder()
             .teacherId(teacher.getId())
             .name(teacher.getName())
             .email(teacher.getEmail())
             .phone(teacher.getPhone())
             .joinDate(teacher.getJoinDate())
-            .status("Active")
+            .status(teacherStatus)
+            .onlineStatus(onlineStatus)
             .qualification(teacher.getQualification())
             .experience(teacher.getExperience())
             .specialization(teacher.getSpecialization())

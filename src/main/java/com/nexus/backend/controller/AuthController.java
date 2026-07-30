@@ -74,6 +74,30 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok("Security settings updated", null));
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse> logout(@RequestBody(required = false) Map<String, Object> body) {
+        if (body != null && body.containsKey("userId")) {
+            Long userId = Long.valueOf(body.get("userId").toString());
+            securitySettingsRepository.findByUserId(userId).ifPresent(s -> {
+                s.setOnline(false);
+                securitySettingsRepository.save(s);
+            });
+        }
+        return ResponseEntity.ok(ApiResponse.ok("Logged out successfully", null));
+    }
+
+    @PostMapping("/heartbeat")
+    public ResponseEntity<ApiResponse> heartbeat(@RequestBody Map<String, Object> body) {
+        if (body != null && body.containsKey("userId")) {
+            Long userId = Long.valueOf(body.get("userId").toString());
+            securitySettingsRepository.findByUserId(userId).ifPresent(s -> {
+                s.setOnline(true);
+                securitySettingsRepository.save(s);
+            });
+        }
+        return ResponseEntity.ok(ApiResponse.ok("Heartbeat received", null));
+    }
+
     private String getClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
         if (ip != null && !ip.isBlank()) return ip.split(",")[0].trim();
