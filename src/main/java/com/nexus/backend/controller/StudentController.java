@@ -218,17 +218,6 @@ public class StudentController {
                         .findFirst();
             }
 
-            if (courseOpt.isPresent()) {
-                Course course = courseOpt.get();
-                dto.put("classTimings", course.getClassTimings() != null ? course.getClassTimings() : "");
-                dto.put("syllabusTopics", course.getSyllabusTopics() != null ? course.getSyllabusTopics() : "");
-                dto.put("whatYouWillLearn", course.getWhatYouWillLearn() != null ? course.getWhatYouWillLearn() : "");
-            } else {
-                dto.put("classTimings", "");
-                dto.put("syllabusTopics", "");
-                dto.put("whatYouWillLearn", "");
-            }
-
             if (!batches.isEmpty()) {
                 Batch batch = batches.get(0);
                 dto.put("batchName", batch.getBatchName());
@@ -241,11 +230,27 @@ public class StudentController {
                         ? batch.getClassDays().stream().map(Enum::name).collect(Collectors.toList())
                         : Collections.emptyList();
                 dto.put("classDays", days);
+                // Always use batch classTimings — this is what admin updates
+                dto.put("classTimings", batch.getClassTimings() != null ? batch.getClassTimings() : "");
             } else {
                 dto.put("batchName", "");
                 dto.put("instructor", "");
                 dto.put("status", "ACTIVE");
                 dto.put("classDays", Collections.emptyList());
+                dto.put("classTimings", "");
+            }
+
+            if (courseOpt.isPresent()) {
+                Course course = courseOpt.get();
+                dto.put("syllabusTopics", course.getSyllabusTopics() != null ? course.getSyllabusTopics() : "");
+                dto.put("whatYouWillLearn", course.getWhatYouWillLearn() != null ? course.getWhatYouWillLearn() : "");
+                String meetLink = course.getGoogleMeetLink() != null ? course.getGoogleMeetLink()
+                        : (course.getMeetLink() != null ? course.getMeetLink() : "");
+                dto.put("googleMeetLink", meetLink);
+            } else {
+                dto.put("syllabusTopics", "");
+                dto.put("whatYouWillLearn", "");
+                dto.put("googleMeetLink", "");
             }
             return dto;
         }).collect(Collectors.toList());
