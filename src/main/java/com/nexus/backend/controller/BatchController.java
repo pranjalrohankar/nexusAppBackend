@@ -48,11 +48,6 @@ public class BatchController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * Returns students enrolled in the course of the given batch.
-     * Uses @Transactional to keep the Hibernate session open while
-     * accessing lazily-loaded Student associations on Enrollment.
-     */
     @GetMapping("/{id}/students")
     @Transactional(readOnly = true)
     public ResponseEntity<List<Map<String, Object>>> getBatchStudents(@PathVariable Long id) {
