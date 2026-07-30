@@ -166,6 +166,15 @@ public class StudentController {
                 dto.put("classTimings", b.getClassTimings() != null ? b.getClassTimings() : "");
                 dto.put("isToday", b.getClassDays().contains(todayDay));
                 dto.put("instructor", b.getInstructor() != null ? b.getInstructor() : "");
+
+                String meetLink = (b.getGoogleMeetLink() != null && !b.getGoogleMeetLink().isBlank())
+                    ? b.getGoogleMeetLink()
+                    : courseRepository.findAll().stream()
+                        .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(b.getSelectCourse()))
+                        .map(c -> c.getGoogleMeetLink() != null ? c.getGoogleMeetLink() : c.getMeetLink())
+                        .findFirst().orElse("");
+                dto.put("googleMeetLink", meetLink);
+
                 return dto;
             }).collect(Collectors.toList());
         return ResponseEntity.ok(result);
@@ -218,6 +227,14 @@ public class StudentController {
                         .findFirst();
             }
 
+            String meetLink = "";
+            if (!batches.isEmpty() && batches.get(0).getGoogleMeetLink() != null && !batches.get(0).getGoogleMeetLink().isBlank()) {
+                meetLink = batches.get(0).getGoogleMeetLink();
+            } else if (courseOpt.isPresent()) {
+                meetLink = courseOpt.get().getGoogleMeetLink() != null ? courseOpt.get().getGoogleMeetLink()
+                        : (courseOpt.get().getMeetLink() != null ? courseOpt.get().getMeetLink() : "");
+            }
+
             if (!batches.isEmpty()) {
                 Batch batch = batches.get(0);
                 dto.put("batchName", batch.getBatchName());
@@ -237,20 +254,18 @@ public class StudentController {
                 dto.put("instructor", "");
                 dto.put("status", "ACTIVE");
                 dto.put("classDays", Collections.emptyList());
-                dto.put("classTimings", "");
+                dto.put("classTimings", courseOpt.isPresent() && courseOpt.get().getClassTimings() != null ? courseOpt.get().getClassTimings() : "");
             }
 
             if (courseOpt.isPresent()) {
                 Course course = courseOpt.get();
                 dto.put("syllabusTopics", course.getSyllabusTopics() != null ? course.getSyllabusTopics() : "");
                 dto.put("whatYouWillLearn", course.getWhatYouWillLearn() != null ? course.getWhatYouWillLearn() : "");
-                String meetLink = course.getGoogleMeetLink() != null ? course.getGoogleMeetLink()
-                        : (course.getMeetLink() != null ? course.getMeetLink() : "");
                 dto.put("googleMeetLink", meetLink);
             } else {
                 dto.put("syllabusTopics", "");
                 dto.put("whatYouWillLearn", "");
-                dto.put("googleMeetLink", "");
+                dto.put("googleMeetLink", meetLink);
             }
             return dto;
         }).collect(Collectors.toList());
