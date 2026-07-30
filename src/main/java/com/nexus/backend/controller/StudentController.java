@@ -227,24 +227,13 @@ public class StudentController {
                         .findFirst();
             }
 
-            if (courseOpt.isPresent()) {
-                Course course = courseOpt.get();
-                dto.put("classTimings", course.getClassTimings() != null ? course.getClassTimings() : "");
-                dto.put("syllabusTopics", course.getSyllabusTopics() != null ? course.getSyllabusTopics() : "");
-                dto.put("whatYouWillLearn", course.getWhatYouWillLearn() != null ? course.getWhatYouWillLearn() : "");
-            } else {
-                dto.put("classTimings", "");
-                dto.put("syllabusTopics", "");
-                dto.put("whatYouWillLearn", "");
-            }
-
             String meetLink = "";
             if (!batches.isEmpty() && batches.get(0).getGoogleMeetLink() != null && !batches.get(0).getGoogleMeetLink().isBlank()) {
                 meetLink = batches.get(0).getGoogleMeetLink();
             } else if (courseOpt.isPresent()) {
-                meetLink = courseOpt.get().getGoogleMeetLink() != null ? courseOpt.get().getGoogleMeetLink() : courseOpt.get().getMeetLink();
+                meetLink = courseOpt.get().getGoogleMeetLink() != null ? courseOpt.get().getGoogleMeetLink()
+                        : (courseOpt.get().getMeetLink() != null ? courseOpt.get().getMeetLink() : "");
             }
-            dto.put("googleMeetLink", meetLink != null ? meetLink : "");
 
             if (!batches.isEmpty()) {
                 Batch batch = batches.get(0);
@@ -258,11 +247,25 @@ public class StudentController {
                         ? batch.getClassDays().stream().map(Enum::name).collect(Collectors.toList())
                         : Collections.emptyList();
                 dto.put("classDays", days);
+                // Always use batch classTimings — this is what admin updates
+                dto.put("classTimings", batch.getClassTimings() != null ? batch.getClassTimings() : "");
             } else {
                 dto.put("batchName", "");
                 dto.put("instructor", "");
                 dto.put("status", "ACTIVE");
                 dto.put("classDays", Collections.emptyList());
+                dto.put("classTimings", courseOpt.isPresent() && courseOpt.get().getClassTimings() != null ? courseOpt.get().getClassTimings() : "");
+            }
+
+            if (courseOpt.isPresent()) {
+                Course course = courseOpt.get();
+                dto.put("syllabusTopics", course.getSyllabusTopics() != null ? course.getSyllabusTopics() : "");
+                dto.put("whatYouWillLearn", course.getWhatYouWillLearn() != null ? course.getWhatYouWillLearn() : "");
+                dto.put("googleMeetLink", meetLink);
+            } else {
+                dto.put("syllabusTopics", "");
+                dto.put("whatYouWillLearn", "");
+                dto.put("googleMeetLink", meetLink);
             }
             return dto;
         }).collect(Collectors.toList());
