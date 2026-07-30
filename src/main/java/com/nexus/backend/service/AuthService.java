@@ -69,9 +69,16 @@ public class AuthService {
 
             LoginHistory record = saveLoginHistory(user.getId(), ipAddress, userAgent, "success", request.getDeviceFingerprint());
 
-            SecuritySettings settings = securitySettingsRepository.findByUserId(user.getId()).orElse(null);
+            final Long currentUserId = user.getId();
+            SecuritySettings settings = securitySettingsRepository.findByUserId(currentUserId).orElseGet(() -> {
+                SecuritySettings s = new SecuritySettings();
+                s.setUserId(currentUserId);
+                return s;
+            });
+            settings.setOnline(true);
+            securitySettingsRepository.save(settings);
 
-            if (settings != null && settings.isLoginAlerts()) {
+            if (settings.isLoginAlerts()) {
                 sendLoginAlertIfNewDevice(user, record, ipAddress);
             }
 
