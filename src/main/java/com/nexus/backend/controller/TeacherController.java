@@ -64,6 +64,8 @@ public class TeacherController {
                     Map<String, Object> m = new HashMap<>();
                     m.put("id", c.getId());
                     m.put("title", c.getTitle());
+                    m.put("category", c.getCategory() != null ? c.getCategory() : "");
+                    m.put("syllabusTopics", c.getSyllabusTopics() != null ? c.getSyllabusTopics() : "");
                     return m;
                 })
                 .collect(Collectors.toList());
