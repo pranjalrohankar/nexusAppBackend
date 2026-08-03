@@ -28,6 +28,8 @@ public class StudyMaterial {
 
     private String topic;
 
+    private String moduleName;
+
     private String fileType;
 
     private String fileName;

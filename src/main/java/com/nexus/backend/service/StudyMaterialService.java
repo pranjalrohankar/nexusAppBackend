@@ -36,11 +36,12 @@ public class StudyMaterialService {
             String batch,
             String fileType,
             String topic,
+            String moduleName,
             String uploadedByEmail,
             String uploadedByRole) throws IOException {
 
-        logger.info("Uploading study material. Title: {}, Course: {}, Batch: {}, Topic: {}",
-                title, course, batch, topic);
+        logger.info("Uploading study material. Title: {}, Course: {}, Batch: {}, Topic: {}, ModuleName: {}",
+                title, course, batch, topic, moduleName);
 
         if (file == null || file.isEmpty()) {
             logger.warn("Upload failed: uploaded file is missing or empty.");
@@ -61,12 +62,16 @@ public class StudyMaterialService {
 
         logger.info("File saved successfully at: {}", filePath);
 
+        String finalMod = (moduleName != null && !moduleName.isBlank()) ? moduleName.trim()
+                : (topic != null && !topic.isBlank()) ? topic.trim() : "";
+
         StudyMaterial material = new StudyMaterial();
         material.setTitle(title);
         material.setDescription(description);
         material.setCourse(course);
         material.setBatch(batch);
-        material.setTopic(topic != null ? topic.trim() : "");
+        material.setTopic(finalMod);
+        material.setModuleName(finalMod);
         material.setFileType(fileType);
         material.setFileName(fileName);
         material.setFilePath("uploads/materials/" + fileName);

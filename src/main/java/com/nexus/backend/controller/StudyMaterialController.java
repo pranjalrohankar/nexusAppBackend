@@ -56,10 +56,14 @@ public class StudyMaterialController {
             @RequestParam("course") String course,
             @RequestParam("batch") String batch,
             @RequestParam("fileType") String fileType,
-            @RequestParam(value = "topic", required = false, defaultValue = "") String topic) {
+            @RequestParam(value = "topic", required = false, defaultValue = "") String topic,
+            @RequestParam(value = "moduleName", required = false, defaultValue = "") String moduleName,
+            @RequestParam(value = "module", required = false, defaultValue = "") String module) {
 
-        logger.info("Upload request received. Title: {}, Course: {}, Batch: {}, Topic: {}",
-                title, course, batch, topic);
+        String finalModuleName = !moduleName.isBlank() ? moduleName : !module.isBlank() ? module : topic;
+
+        logger.info("Upload request received. Title: {}, Course: {}, Batch: {}, Topic: {}, ModuleName: {}",
+                title, course, batch, topic, finalModuleName);
 
         try {
 
@@ -77,6 +81,7 @@ public class StudyMaterialController {
                     batch,
                     fileType,
                     topic,
+                    finalModuleName,
                     currentEmail,
                     currentRole
             );
