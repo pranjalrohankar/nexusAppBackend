@@ -1,8 +1,9 @@
 package com.nexus.backend.controller;
 
 import com.nexus.backend.model.ClassRecording;
+import com.nexus.backend.repository.BatchRepository;
+import com.nexus.backend.repository.UserRepository;
 import com.nexus.backend.service.ClassRecordingService;
-
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
@@ -15,7 +16,8 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 import java.io.*;
 import java.nio.file.*;
 import java.time.LocalDate;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/recordings")
@@ -25,9 +27,13 @@ public class ClassRecordingController {
     private static final int CHUNK_SIZE = 1024 * 1024; // 1 MB chunks
 
     private final ClassRecordingService recordingService;
+    private final UserRepository userRepository;
+    private final BatchRepository batchRepository;
 
-    public ClassRecordingController(ClassRecordingService recordingService) {
+    public ClassRecordingController(ClassRecordingService recordingService, UserRepository userRepository, BatchRepository batchRepository) {
         this.recordingService = recordingService;
+        this.userRepository = userRepository;
+        this.batchRepository = batchRepository;
     }
 
     // Upload Recording
@@ -37,32 +43,90 @@ public class ClassRecordingController {
             @RequestParam("title") String title,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam("classDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate classDate,
-            @RequestParam("duration") String duration,
+            @RequestParam(value = "duration", required = false) String duration,
             @RequestParam("course") String course,
-            @RequestParam("batch") String batch
+            @RequestParam("batch") String batch,
+            @RequestParam(value = "uploadedByEmail", required = false) String paramEmail
     ) throws IOException {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String currentEmail = auth != null ? auth.getName() : null;
+        String currentEmail = auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())
+                ? auth.getName()
+                : (paramEmail != null && !paramEmail.isBlank() ? paramEmail : null);
         String currentRole = auth != null && !auth.getAuthorities().isEmpty()
                 ? auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
                 : null;
 
         ClassRecording recording = recordingService.uploadRecording(
-                file, title, description, classDate, duration, course, batch, currentEmail, currentRole
+                file, title, description, classDate, duration != null ? duration : "", course, batch, currentEmail, currentRole
         );
         return ResponseEntity.ok(recording);
     }
 
     // Get All Recordings
     @GetMapping
-    public ResponseEntity<List<ClassRecording>> getAllRecordings() {
+    public ResponseEntity<List<Map<String, Object>>> getAllRecordings() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String currentEmail = auth != null ? auth.getName() : null;
         String currentRole = auth != null && !auth.getAuthorities().isEmpty()
                 ? auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
                 : null;
-        return ResponseEntity.ok(recordingService.getAllRecordings(currentEmail, currentRole));
+
+        List<ClassRecording> list = recordingService.getAllRecordings(currentEmail, currentRole);
+
+        // Build user map for fast lookup of uploader names by email
+        Map<String, String> userNames = new HashMap<>();
+        userRepository.findAll().forEach(u -> {
+            if (u.getEmail() != null && u.getName() != null) {
+                userNames.put(u.getEmail().toLowerCase().trim(), u.getName());
+            }
+        });
+
+        // Build instructor name map: course -> instructor name from batch
+        Map<String, String> courseInstructor = new HashMap<>();
+        batchRepository.findAll().forEach(b -> {
+            if (b.getSelectCourse() != null && b.getInstructor() != null) {
+                courseInstructor.putIfAbsent(b.getSelectCourse().toLowerCase(), b.getInstructor());
+            }
+        });
+
+        List<Map<String, Object>> result = list.stream().map(r -> {
+            Map<String, Object> dto = new HashMap<>();
+            dto.put("id", r.getId());
+            dto.put("title", r.getTitle());
+            dto.put("description", r.getDescription());
+            dto.put("classDate", r.getClassDate() != null ? r.getClassDate().toString() : null);
+            dto.put("duration", r.getDuration());
+            dto.put("course", r.getCourse());
+            dto.put("batch", r.getBatch());
+            dto.put("fileName", r.getFileName());
+            dto.put("filePath", r.getFilePath());
+            dto.put("fileUrl", r.getFileUrl());
+            dto.put("fileSize", r.getFileSize());
+            dto.put("fileType", r.getFileType());
+            dto.put("uploadedByEmail", r.getUploadedByEmail());
+            dto.put("uploadedByRole", r.getUploadedByRole());
+            dto.put("uploadedAt", r.getUploadedAt() != null ? r.getUploadedAt().toString() : null);
+
+            // Resolve actual uploader name from User table first
+            String instructor = null;
+            if (r.getUploadedByEmail() != null) {
+                instructor = userNames.get(r.getUploadedByEmail().toLowerCase().trim());
+            }
+            if (instructor == null || instructor.trim().isEmpty()) {
+                if (r.getUploadedByEmail() != null) {
+                    String prefix = r.getUploadedByEmail().split("@")[0].replace(".", " ");
+                    instructor = Character.toUpperCase(prefix.charAt(0)) + prefix.substring(1);
+                }
+            }
+            if (instructor == null || instructor.trim().isEmpty()) {
+                instructor = courseInstructor.get(r.getCourse() != null ? r.getCourse().toLowerCase() : "");
+            }
+            dto.put("instructor", instructor != null ? instructor : "Instructor");
+            return dto;
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
     }
 
     // Get Recording By ID

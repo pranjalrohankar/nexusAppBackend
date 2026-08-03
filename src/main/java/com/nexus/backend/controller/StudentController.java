@@ -293,6 +293,14 @@ public class StudentController {
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
 
+        // Build user map for fast lookup of uploader names by email
+        Map<String, String> userNames = new HashMap<>();
+        userRepository.findAll().forEach(u -> {
+            if (u.getEmail() != null && u.getName() != null) {
+                userNames.put(u.getEmail().toLowerCase().trim(), u.getName());
+            }
+        });
+
         // Build instructor name map: course -> instructor name from batch
         Map<String, String> courseInstructor = new HashMap<>();
         batchRepository.findAll().forEach(b -> {
@@ -313,12 +321,20 @@ public class StudentController {
             dto.put("fileName", r.getFileName());
             dto.put("fileSize", r.getFileSize());
             dto.put("uploadedAt", r.getUploadedAt() != null ? r.getUploadedAt().toString() : null);
-            // Resolve instructor name from batch, fallback to email prefix
-            String instructor = courseInstructor.get(r.getCourse() != null ? r.getCourse().toLowerCase() : "");
+            dto.put("uploadedByEmail", r.getUploadedByEmail());
+
+            // Resolve actual uploader name from User table first, fallback to batch instructor
+            String instructor = null;
+            if (r.getUploadedByEmail() != null) {
+                instructor = userNames.get(r.getUploadedByEmail().toLowerCase().trim());
+            }
+            if (instructor == null || instructor.trim().isEmpty()) {
+                instructor = courseInstructor.get(r.getCourse() != null ? r.getCourse().toLowerCase() : "");
+            }
             if (instructor == null && r.getUploadedByEmail() != null) {
                 instructor = r.getUploadedByEmail().split("@")[0].replace(".", " ");
             }
-            dto.put("instructor", instructor != null ? instructor : "");
+            dto.put("instructor", instructor != null ? instructor : "Instructor");
             return dto;
         }).collect(Collectors.toList());
 

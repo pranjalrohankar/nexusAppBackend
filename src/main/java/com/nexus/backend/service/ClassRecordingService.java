@@ -96,7 +96,7 @@ public class ClassRecordingService {
         if (currentEmail == null || currentEmail.isBlank()) return recordings;
         if ("ADMIN".equalsIgnoreCase(currentRole)) return recordings;
         return recordings.stream()
-                .filter(r -> currentEmail.equalsIgnoreCase(r.getUploadedByEmail()))
+                .filter(r -> r.getUploadedByEmail() == null || currentEmail.equalsIgnoreCase(r.getUploadedByEmail()))
                 .toList();
     }
 

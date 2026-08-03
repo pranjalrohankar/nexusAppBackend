@@ -51,8 +51,14 @@ public class TeacherController {
                 .map(a -> a.getCourse().getTitle())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
-            // Also include courses from batches assigned to this teacher
-            batchRepository.findByInstructorIgnoreCase(teacherName).stream()
+            Set<String> searchNames = new HashSet<>();
+            if (teacherName != null && !teacherName.isBlank()) searchNames.add(teacherName.toLowerCase().trim());
+            if (userOpt.get().getName() != null && !userOpt.get().getName().isBlank()) searchNames.add(userOpt.get().getName().toLowerCase().trim());
+            if (teacher.getEmail() != null && !teacher.getEmail().isBlank()) searchNames.add(teacher.getEmail().toLowerCase().trim());
+
+            // Include courses from batches assigned to this teacher
+            batchRepository.findAll().stream()
+                .filter(b -> b.getInstructor() != null && searchNames.contains(b.getInstructor().toLowerCase().trim()))
                 .map(b -> b.getSelectCourse())
                 .filter(Objects::nonNull)
                 .forEach(courseTitles::add);
@@ -71,27 +77,16 @@ public class TeacherController {
                 .collect(Collectors.toList());
 
             // Build batch list filtered by course if provided
-            List<Map<String, Object>> batchList;
-            if (course != null && !course.isBlank()) {
-                batchList = batchRepository
-                    .findByInstructorIgnoreCaseAndSelectCourseIgnoreCase(teacherName, course)
-                    .stream().map(b -> {
-                        Map<String, Object> m = new HashMap<>();
-                        m.put("id", b.getId());
-                        m.put("batchName", b.getBatchName());
-                        m.put("selectCourse", b.getSelectCourse());
-                        return m;
-                    }).collect(Collectors.toList());
-            } else {
-                batchList = batchRepository.findByInstructorIgnoreCase(teacherName)
-                    .stream().map(b -> {
-                        Map<String, Object> m = new HashMap<>();
-                        m.put("id", b.getId());
-                        m.put("batchName", b.getBatchName());
-                        m.put("selectCourse", b.getSelectCourse());
-                        return m;
-                    }).collect(Collectors.toList());
-            }
+            List<Map<String, Object>> batchList = batchRepository.findAll().stream()
+                .filter(b -> b.getInstructor() != null && searchNames.contains(b.getInstructor().toLowerCase().trim()))
+                .filter(b -> course == null || course.isBlank() || (b.getSelectCourse() != null && b.getSelectCourse().equalsIgnoreCase(course.trim())))
+                .map(b -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", b.getId());
+                    m.put("batchName", b.getBatchName());
+                    m.put("selectCourse", b.getSelectCourse());
+                    return m;
+                }).collect(Collectors.toList());
 
             return ResponseEntity.ok(Map.of(
                 "success", true,
