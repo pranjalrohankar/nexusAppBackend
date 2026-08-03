@@ -57,9 +57,25 @@ public class AdminController {
         long totalStudents = studentRepository.count();
         long totalTeachers = teacherRepository.count();
         long totalCourses = courseRepository.count();
-        BigDecimal revenue = courseRepository.findAll().stream()
-            .filter(c -> c.getPrice() != null)
-            .map(Course::getPrice)
+
+        // Build price map of courseTitle -> course price
+        Map<String, BigDecimal> coursePriceMap = courseRepository.findAll().stream()
+            .filter(c -> c.getTitle() != null && c.getPrice() != null)
+            .collect(Collectors.toMap(
+                c -> c.getTitle().trim().toLowerCase(),
+                Course::getPrice,
+                (existing, replacement) -> existing
+            ));
+
+        // Revenue generated strictly from Paid student enrollments
+        List<Enrollment> allEnrollments = enrollmentRepository.findAll();
+        BigDecimal revenue = allEnrollments.stream()
+            .filter(e -> e.getPaymentStatus() != null && "paid".equalsIgnoreCase(e.getPaymentStatus().trim()))
+            .map(e -> {
+                String titleKey = e.getCourseTitle() != null ? e.getCourseTitle().trim().toLowerCase() : "";
+                BigDecimal price = coursePriceMap.get(titleKey);
+                return price != null ? price : new BigDecimal("5000");
+            })
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> data = new HashMap<>();
@@ -89,25 +105,40 @@ public class AdminController {
         long totalCourses = courseRepository.count();
         long activeCourses = courseRepository.findByStatus(Course.Status.ACTIVE).size();
 
+        List<Enrollment> allEnrollments = enrollmentRepository.findAll();
+        long paidEnrollmentsCount = allEnrollments.stream()
+            .filter(e -> e.getPaymentStatus() != null && "paid".equalsIgnoreCase(e.getPaymentStatus().trim()))
+            .count();
+
         // Percentages based on real ratios
         String studentsPct = totalStudents > 0 ? "+" + Math.min(99, (int)((double) enrollmentRepository.count() / totalStudents * 100)) + "%" : "+0%";
         String teachersPct = totalTeachers > 0 ? "+" + Math.min(99, (int)((double) activeCourses / Math.max(1, totalCourses) * totalTeachers)) + "%" : "+0%";
         String coursesPct = totalCourses > 0 ? "+" + (int)((double) activeCourses / totalCourses * 100) + "%" : "+0%";
 
-        BigDecimal revenue = courseRepository.findAll().stream()
-            .filter(c -> c.getPrice() != null)
-            .map(Course::getPrice)
+        // Build price map of courseTitle -> course price
+        Map<String, BigDecimal> coursePriceMap = courseRepository.findAll().stream()
+            .filter(c -> c.getTitle() != null && c.getPrice() != null)
+            .collect(Collectors.toMap(
+                c -> c.getTitle().trim().toLowerCase(),
+                Course::getPrice,
+                (existing, replacement) -> existing
+            ));
+
+        // Revenue generated strictly from Paid student enrollments
+        BigDecimal revenue = allEnrollments.stream()
+            .filter(e -> e.getPaymentStatus() != null && "paid".equalsIgnoreCase(e.getPaymentStatus().trim()))
+            .map(e -> {
+                String titleKey = e.getCourseTitle() != null ? e.getCourseTitle().trim().toLowerCase() : "";
+                BigDecimal price = coursePriceMap.get(titleKey);
+                return price != null ? price : new BigDecimal("5000");
+            })
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal activeRevenue = courseRepository.findByStatus(Course.Status.ACTIVE).stream()
-            .filter(c -> c.getPrice() != null)
-            .map(Course::getPrice)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        String revenuePct = revenue.compareTo(BigDecimal.ZERO) > 0
-            ? "+" + activeRevenue.multiply(new java.math.BigDecimal(100)).divide(revenue, 0, java.math.RoundingMode.HALF_UP) + "%"
+
+        String revenuePct = allEnrollments.size() > 0
+            ? "+" + (int)((double) paidEnrollmentsCount / allEnrollments.size() * 100) + "%"
             : "+0%";
 
         // Recent enrollments (last 10)
-        List<Enrollment> allEnrollments = enrollmentRepository.findAll();
         List<Map<String, Object>> recentEnrollments = allEnrollments.stream()
             .sorted((a, b) -> {
                 String da = a.getEnrollmentDate() != null ? a.getEnrollmentDate() : "";
