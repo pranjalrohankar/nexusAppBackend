@@ -247,14 +247,16 @@ public class StudentController {
                         ? batch.getClassDays().stream().map(Enum::name).collect(Collectors.toList())
                         : Collections.emptyList();
                 dto.put("classDays", days);
-                // Always use batch classTimings — this is what admin updates
+                // Always use batch classTimings & duration — this is what admin updates
                 dto.put("classTimings", batch.getClassTimings() != null ? batch.getClassTimings() : "");
+                dto.put("duration", batch.getDuration() != null && !batch.getDuration().isBlank() ? batch.getDuration() : (courseOpt.isPresent() && courseOpt.get().getDuration() != null ? courseOpt.get().getDuration() : ""));
             } else {
                 dto.put("batchName", "");
                 dto.put("instructor", "");
                 dto.put("status", "ACTIVE");
                 dto.put("classDays", Collections.emptyList());
                 dto.put("classTimings", courseOpt.isPresent() && courseOpt.get().getClassTimings() != null ? courseOpt.get().getClassTimings() : "");
+                dto.put("duration", courseOpt.isPresent() && courseOpt.get().getDuration() != null ? courseOpt.get().getDuration() : "");
             }
 
             if (courseOpt.isPresent()) {
