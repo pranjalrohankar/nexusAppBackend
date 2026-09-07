@@ -53,14 +53,6 @@ public class AuthService {
                 throw new RuntimeException("Invalid ID or Password");
             }
 
-            String expectedRole = request.getRole().toUpperCase(Locale.ROOT);
-            if (!user.getRole().name().equals(expectedRole)) {
-                handleFailedAttempt(user, ipAddress, userAgent, request.getDeviceFingerprint());
-                String actualRoleStr = user.getRole().name().substring(0, 1).toUpperCase(Locale.ROOT) + user.getRole().name().substring(1).toLowerCase(Locale.ROOT);
-                String requestedRoleStr = request.getRole().substring(0, 1).toUpperCase(Locale.ROOT) + request.getRole().substring(1).toLowerCase(Locale.ROOT);
-                throw new RuntimeException("Invalid Role: Account is registered as " + actualRoleStr + ", not " + requestedRoleStr);
-            }
-
             failedAttempts.remove(request.getEmail());
 
             LocalDateTime now = LocalDateTime.now();
