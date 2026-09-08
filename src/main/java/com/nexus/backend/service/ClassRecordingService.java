@@ -110,6 +110,31 @@ public class ClassRecordingService {
                 .orElseThrow(() -> new IllegalArgumentException("Recording not found."));
     }
 
+    public ClassRecording updateRecording(Long id, java.util.Map<String, Object> updates) {
+        ClassRecording rec = getRecordingById(id);
+        if (updates.containsKey("title") && updates.get("title") != null) {
+            rec.setTitle(String.valueOf(updates.get("title")));
+        }
+        if (updates.containsKey("description") && updates.get("description") != null) {
+            rec.setDescription(String.valueOf(updates.get("description")));
+        }
+        if (updates.containsKey("course") && updates.get("course") != null) {
+            rec.setCourse(String.valueOf(updates.get("course")));
+        }
+        if (updates.containsKey("batch") && updates.get("batch") != null) {
+            rec.setBatch(String.valueOf(updates.get("batch")));
+        }
+        if (updates.containsKey("videoUrl") && updates.get("videoUrl") != null) {
+            String url = String.valueOf(updates.get("videoUrl")).trim();
+            if (!url.isBlank()) {
+                rec.setFileUrl(url);
+                rec.setFileName("Online Video Lecture");
+                rec.setFileType("video/mp4");
+            }
+        }
+        return repository.save(rec);
+    }
+
     public void deleteRecording(Long id) throws IOException {
         ClassRecording recording = getRecordingById(id);
 

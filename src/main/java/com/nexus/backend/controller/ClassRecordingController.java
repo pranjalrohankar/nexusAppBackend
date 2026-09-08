@@ -270,6 +270,15 @@ public class ClassRecordingController {
         }
     }
 
+    // Update Recording
+    @PutMapping("/{id}")
+    public ResponseEntity<ClassRecording> updateRecording(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> updates) {
+        ClassRecording updated = recordingService.updateRecording(id, updates);
+        return ResponseEntity.ok(updated);
+    }
+
     // Delete Recording
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteRecording(@PathVariable Long id) throws IOException {
