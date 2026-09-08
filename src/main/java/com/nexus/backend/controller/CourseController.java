@@ -152,20 +152,50 @@ public class CourseController {
         }
     }
 
+    private String extractCoveredTopics(Object body) {
+        if (body == null) return "";
+        try {
+            if (body instanceof String str) {
+                String trimmed = str.trim();
+                if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
+                    try {
+                        com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(trimmed);
+                        if (node.isArray()) {
+                            return trimmed;
+                        } else if (node.has("coveredTopics")) {
+                            com.fasterxml.jackson.databind.JsonNode ct = node.get("coveredTopics");
+                            return ct.isTextual() ? ct.asText() : ct.toString();
+                        } else if (node.has("topics")) {
+                            com.fasterxml.jackson.databind.JsonNode ct = node.get("topics");
+                            return ct.isTextual() ? ct.asText() : ct.toString();
+                        }
+                    } catch (Exception ignored) {}
+                }
+                return trimmed;
+            } else if (body instanceof List<?> list) {
+                return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(list);
+            } else if (body instanceof Map<?, ?> map) {
+                Object raw = map.get("coveredTopics");
+                if (raw == null) raw = map.get("topics");
+                if (raw == null) raw = map.get("data");
+                if (raw instanceof List) {
+                    return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(raw);
+                } else if (raw != null) {
+                    return raw.toString();
+                }
+                return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(map);
+            }
+        } catch (Exception ignored) {}
+        return body.toString();
+    }
+
     @PutMapping("/{id}/covered-topics")
     public ResponseEntity<Map<String, Object>> updateCourseCoveredTopics(
             @PathVariable Long id,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody(required = false) Object body) {
         try {
+            String topicsStr = extractCoveredTopics(body);
             Course course = service.getCourseById(id);
-            Object raw = body.get("coveredTopics");
-            if (raw == null) raw = body.get("topics");
-            String topicsStr = "";
-            if (raw instanceof List) {
-                topicsStr = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(raw);
-            } else if (raw != null) {
-                topicsStr = raw.toString();
-            }
             if (course != null) {
                 course.setCoveredTopics(topicsStr);
                 service.saveCourse(course);
@@ -210,16 +240,9 @@ public class CourseController {
     @PutMapping("/by-title/covered-topics")
     public ResponseEntity<Map<String, Object>> updateCoveredTopicsByTitle(
             @RequestParam String title,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody(required = false) Object body) {
         try {
-            Object raw = body.get("coveredTopics");
-            if (raw == null) raw = body.get("topics");
-            String topicsStr = "";
-            if (raw instanceof List) {
-                topicsStr = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(raw);
-            } else if (raw != null) {
-                topicsStr = raw.toString();
-            }
+            String topicsStr = extractCoveredTopics(body);
             final String finalTopics = topicsStr;
             final String search = title != null ? title.trim().toLowerCase() : "";
 

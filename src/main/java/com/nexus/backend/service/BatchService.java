@@ -23,15 +23,18 @@ public class BatchService {
     private final AppNotificationService appNotificationService;
     private final UserRepository userRepository;
     private final com.nexus.backend.repository.CourseRepository courseRepository;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     public BatchService(BatchRepository batchRepository, EnrollmentRepository enrollmentRepository,
                         AppNotificationService appNotificationService, UserRepository userRepository,
-                        com.nexus.backend.repository.CourseRepository courseRepository) {
+                        com.nexus.backend.repository.CourseRepository courseRepository,
+                        org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
         this.batchRepository = batchRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.appNotificationService = appNotificationService;
         this.userRepository = userRepository;
         this.courseRepository = courseRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     public Batch createBatch(BatchDto request) {
@@ -45,10 +48,19 @@ public class BatchService {
         batch.setClassDays(request.getClassDays());
         batch.setClassTimings(request.getClassTimings());
         batch.setDuration(request.getDuration());
-        if (request.getGoogleMeetLink() != null && !request.getGoogleMeetLink().isBlank()) {
-            batch.setGoogleMeetLink(request.getGoogleMeetLink());
+        batch.setGoogleMeetLink(request.getGoogleMeetLink());
+        if (request.getCoveredTopics() != null) {
+            batch.setCoveredTopics(request.getCoveredTopics());
         }
-        return batchRepository.save(batch);
+        Batch saved = batchRepository.save(batch);
+        String schedule = request.getClassDays() != null ? request.getClassDays().toString() : "schedule details";
+        if (batch.getInstructor() != null && !batch.getInstructor().isBlank()) {
+            userRepository.findAll().stream()
+                .filter(u -> u.getName() != null && u.getName().equalsIgnoreCase(batch.getInstructor()))
+                .map(u -> u.getEmail()).findFirst()
+                .ifPresent(email -> appNotificationService.notifyScheduleUpdated(batch.getBatchName(), schedule, email));
+        }
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -59,30 +71,46 @@ public class BatchService {
             return batches.stream().map(batch -> {
                 Map<String, Object> batchMap = new HashMap<>();
                 batchMap.put("id", batch.getId());
-                batchMap.put("batchName", batch.getBatchName() != null ? batch.getBatchName() : "");
-                batchMap.put("selectCourse", batch.getSelectCourse() != null ? batch.getSelectCourse() : "");
-                batchMap.put("instructor", batch.getInstructor() != null ? batch.getInstructor() : "");
+                batchMap.put("batchName", batch.getBatchName());
+                batchMap.put("selectCourse", batch.getSelectCourse());
+                batchMap.put("instructor", batch.getInstructor());
                 batchMap.put("startDate", batch.getStartDate());
                 batchMap.put("endDate", batch.getEndDate());
-                batchMap.put("classDays", batch.getClassDays() != null ? batch.getClassDays() : java.util.Collections.emptyList());
                 batchMap.put("status", batch.getStatus());
                 batchMap.put("createdAt", batch.getCreatedAt());
-                batchMap.put("classTimings", batch.getClassTimings() != null ? batch.getClassTimings() : "");
-                batchMap.put("courseTimings", batch.getClassTimings() != null ? batch.getClassTimings() : "");
-                batchMap.put("duration", batch.getDuration() != null ? batch.getDuration() : "");
+                batchMap.put("classDays", batch.getClassDays());
 
+                String timings = batch.getClassTimings();
                 String selectCourse = batch.getSelectCourse();
-                String meetLink = "";
-                if (batch.getGoogleMeetLink() != null && !batch.getGoogleMeetLink().isBlank()) {
-                    meetLink = batch.getGoogleMeetLink();
-                } else if (selectCourse != null && !selectCourse.isBlank()) {
+                if ((timings == null || timings.isBlank()) && selectCourse != null) {
+                    timings = allCourses.stream()
+                        .filter(c -> c != null && c.getTitle() != null && c.getTitle().equalsIgnoreCase(selectCourse.trim()))
+                        .map(c -> c.getClassTimings())
+                        .filter(t -> t != null && !t.isBlank())
+                        .findFirst().orElse("");
+                }
+                batchMap.put("classTimings", timings != null ? timings : "");
+                batchMap.put("courseTimings", timings != null ? timings : "");
+
+                String duration = batch.getDuration();
+                if ((duration == null || duration.isBlank()) && selectCourse != null) {
+                    duration = allCourses.stream()
+                        .filter(c -> c != null && c.getTitle() != null && c.getTitle().equalsIgnoreCase(selectCourse.trim()))
+                        .map(c -> c.getDuration())
+                        .filter(d -> d != null && !d.isBlank())
+                        .findFirst().orElse("");
+                }
+                batchMap.put("duration", duration != null ? duration : "");
+
+                String meetLink = batch.getGoogleMeetLink();
+                if ((meetLink == null || meetLink.isBlank()) && selectCourse != null) {
                     meetLink = allCourses.stream()
                         .filter(c -> c != null && c.getTitle() != null && c.getTitle().equalsIgnoreCase(selectCourse.trim()))
                         .map(c -> c.getGoogleMeetLink() != null && !c.getGoogleMeetLink().isBlank() ? c.getGoogleMeetLink() : (c.getMeetLink() != null ? c.getMeetLink() : ""))
                         .filter(l -> l != null && !l.isBlank())
                         .findFirst().orElse("");
                 }
-                batchMap.put("googleMeetLink", meetLink);
+                batchMap.put("googleMeetLink", meetLink != null ? meetLink : "");
 
                 int studentCount = 0;
                 if (selectCourse != null && !selectCourse.isBlank()) {
@@ -94,14 +122,18 @@ public class BatchService {
 
                 String covered = batch.getCoveredTopics();
                 if ((covered == null || covered.isBlank()) && selectCourse != null) {
+                    final String cleanSelect = selectCourse.trim().toLowerCase();
                     covered = allCourses.stream()
-                        .filter(c -> c != null && c.getTitle() != null && c.getTitle().equalsIgnoreCase(selectCourse.trim()))
+                        .filter(c -> c != null && c.getTitle() != null && (
+                            c.getTitle().trim().equalsIgnoreCase(selectCourse.trim()) ||
+                            cleanSelect.contains(c.getTitle().trim().toLowerCase()) ||
+                            c.getTitle().trim().toLowerCase().contains(cleanSelect)
+                        ))
                         .map(c -> c.getCoveredTopics())
                         .filter(cv -> cv != null && !cv.isBlank())
                         .findFirst().orElse("");
                 }
                 batchMap.put("coveredTopics", covered != null ? covered : "");
-
                 return batchMap;
             }).collect(Collectors.toList());
         } catch (Exception e) {
@@ -121,17 +153,15 @@ public class BatchService {
         batch.setClassDays(request.getClassDays());
         batch.setClassTimings(request.getClassTimings());
         batch.setDuration(request.getDuration());
+        batch.setGoogleMeetLink(request.getGoogleMeetLink());
         if (request.getCoveredTopics() != null) {
             batch.setCoveredTopics(request.getCoveredTopics());
         }
-        if (request.getGoogleMeetLink() != null) {
-            batch.setGoogleMeetLink(request.getGoogleMeetLink());
-            // Sync to course
+        if (request.getGoogleMeetLink() != null && !request.getGoogleMeetLink().isBlank() && batch.getSelectCourse() != null) {
             courseRepository.findAll().stream()
-                .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(batch.getSelectCourse()))
+                .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(batch.getSelectCourse().trim()))
                 .forEach(c -> {
                     c.setGoogleMeetLink(request.getGoogleMeetLink());
-                    c.setMeetLink(request.getGoogleMeetLink());
                     courseRepository.save(c);
                 });
         }
@@ -148,6 +178,12 @@ public class BatchService {
 
     public Batch updateCoveredTopics(Long id, String coveredTopics) {
         if (id == null) return null;
+        try {
+            if (jdbcTemplate != null) {
+                jdbcTemplate.update("UPDATE batches SET covered_topics = ? WHERE id = ?", coveredTopics, id);
+            }
+        } catch (Exception ignored) {}
+
         Optional<Batch> batchOpt = batchRepository.findById(id);
         if (batchOpt.isEmpty()) {
             return null;
@@ -159,16 +195,23 @@ public class BatchService {
         // Synchronize to matching Course so all students & admins of this course see it immediately
         if (batch.getSelectCourse() != null && !batch.getSelectCourse().isBlank()) {
             final String cleanCourse = batch.getSelectCourse().trim().toLowerCase();
-            courseRepository.findAll().stream()
-                .filter(c -> c.getTitle() != null && (
-                    c.getTitle().trim().equalsIgnoreCase(batch.getSelectCourse().trim()) ||
-                    cleanCourse.contains(c.getTitle().trim().toLowerCase()) ||
-                    c.getTitle().trim().toLowerCase().contains(cleanCourse)
-                ))
-                .forEach(c -> {
-                    c.setCoveredTopics(coveredTopics);
-                    courseRepository.save(c);
-                });
+            try {
+                if (jdbcTemplate != null) {
+                    jdbcTemplate.update("UPDATE courses SET covered_topics = ? WHERE LOWER(title) = ?", coveredTopics, cleanCourse);
+                }
+            } catch (Exception ignored) {}
+            try {
+                courseRepository.findAll().stream()
+                    .filter(c -> c.getTitle() != null && (
+                        c.getTitle().trim().equalsIgnoreCase(batch.getSelectCourse().trim()) ||
+                        cleanCourse.contains(c.getTitle().trim().toLowerCase()) ||
+                        c.getTitle().trim().toLowerCase().contains(cleanCourse)
+                    ))
+                    .forEach(c -> {
+                        c.setCoveredTopics(coveredTopics);
+                        courseRepository.save(c);
+                    });
+            } catch (Exception ignored) {}
         }
         return saved;
     }

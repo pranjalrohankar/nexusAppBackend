@@ -28,12 +28,21 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        log.warn("Payload not readable or parse error: {}", ex.getMessage());
+        return new ResponseEntity<>(
+                ApiResponse.error("Invalid request payload format: " + ex.getMessage()),
+                HttpStatus.OK
+        );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGlobalException(Exception ex) {
         log.error("Unhandled server exception: ", ex);
         return new ResponseEntity<>(
                 ApiResponse.error("Server error: " + ex.getMessage()),
-                HttpStatus.INTERNAL_SERVER_ERROR
+                HttpStatus.OK
         );
     }
 }
