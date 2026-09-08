@@ -70,61 +70,110 @@ public class StudentController {
         }
     }
 
+    private Long resolveUserId(Student student) {
+        if (student == null) return null;
+        if (student.getUser() != null && student.getUser().getId() != null) {
+            return student.getUser().getId();
+        }
+        if (student.getEmail() != null && !student.getEmail().isBlank()) {
+            return userRepository.findByEmailIgnoreCase(student.getEmail().trim())
+                    .map(User::getId)
+                    .orElse(student.getId());
+        }
+        return student.getId();
+    }
+
     /** Called on login/logout to update online status */
     @PutMapping("/activity-status")
     @Transactional
     public ResponseEntity<Map<String, Object>> setActivityStatus(@RequestBody Map<String, Object> body) {
-        Student student = getCurrentStudent();
-        if (student == null) return ResponseEntity.status(401).build();
-        boolean online = Boolean.TRUE.equals(body.get("online"));
-        SecuritySettings settings = securitySettingsRepository.findByUserId(student.getUser().getId())
-                .orElseGet(() -> { SecuritySettings s = new SecuritySettings(); s.setUserId(student.getUser().getId()); return s; });
-        settings.setOnline(online);
-        securitySettingsRepository.save(settings);
-        return ResponseEntity.ok(java.util.Map.of("success", true));
+        try {
+            Student student = getCurrentStudent();
+            if (student == null) {
+                return ResponseEntity.ok(Map.of("success", true, "message", "No active session"));
+            }
+            Long userId = resolveUserId(student);
+            if (userId != null) {
+                final Long finalUserId = userId;
+                boolean online = Boolean.TRUE.equals(body.get("online"));
+                SecuritySettings settings = securitySettingsRepository.findByUserId(finalUserId)
+                        .orElseGet(() -> { SecuritySettings s = new SecuritySettings(); s.setUserId(finalUserId); return s; });
+                settings.setOnline(online);
+                securitySettingsRepository.save(settings);
+            }
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("success", true, "warning", e.getMessage()));
+        }
     }
 
     /** Update activity status privacy setting */
     @PutMapping("/privacy-settings")
     @Transactional
     public ResponseEntity<Map<String, Object>> updatePrivacySettings(@RequestBody Map<String, Object> body) {
-        Student student = getCurrentStudent();
-        if (student == null) return ResponseEntity.status(401).build();
-        SecuritySettings settings = securitySettingsRepository.findByUserId(student.getUser().getId())
-                .orElseGet(() -> { SecuritySettings s = new SecuritySettings(); s.setUserId(student.getUser().getId()); return s; });
-        if (body.containsKey("activityStatusEnabled"))
-            settings.setActivityStatusEnabled(Boolean.TRUE.equals(body.get("activityStatusEnabled")));
-        securitySettingsRepository.save(settings);
-        return ResponseEntity.ok(java.util.Map.of("success", true));
+        try {
+            Student student = getCurrentStudent();
+            if (student == null) {
+                return ResponseEntity.ok(Map.of("success", true, "message", "No active session"));
+            }
+            Long userId = resolveUserId(student);
+            if (userId != null) {
+                final Long finalUserId = userId;
+                SecuritySettings settings = securitySettingsRepository.findByUserId(finalUserId)
+                        .orElseGet(() -> { SecuritySettings s = new SecuritySettings(); s.setUserId(finalUserId); return s; });
+                if (body.containsKey("activityStatusEnabled")) {
+                    settings.setActivityStatusEnabled(Boolean.TRUE.equals(body.get("activityStatusEnabled")));
+                }
+                securitySettingsRepository.save(settings);
+            }
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("success", true, "warning", e.getMessage()));
+        }
     }
 
     /** Get student privacy settings */
     @GetMapping("/privacy-settings")
     @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> getPrivacySettings() {
-        Student student = getCurrentStudent();
-        if (student == null) return ResponseEntity.status(401).build();
-        SecuritySettings settings = securitySettingsRepository.findByUserId(student.getUser().getId())
-                .orElseGet(() -> { SecuritySettings s = new SecuritySettings(); s.setUserId(student.getUser().getId()); return securitySettingsRepository.save(s); });
-        return ResponseEntity.ok(java.util.Map.of("success", true, "data",
-                java.util.Map.of("activityStatusEnabled", settings.isActivityStatusEnabled())));
+        try {
+            Student student = getCurrentStudent();
+            if (student == null) {
+                return ResponseEntity.ok(Map.of("success", true, "data", Map.of("activityStatusEnabled", true)));
+            }
+            Long userId = resolveUserId(student);
+            if (userId != null) {
+                final Long finalUserId = userId;
+                SecuritySettings settings = securitySettingsRepository.findByUserId(finalUserId)
+                        .orElseGet(() -> { SecuritySettings s = new SecuritySettings(); s.setUserId(finalUserId); return s; });
+                return ResponseEntity.ok(Map.of("success", true, "data",
+                        Map.of("activityStatusEnabled", settings.isActivityStatusEnabled())));
+            }
+            return ResponseEntity.ok(Map.of("success", true, "data", Map.of("activityStatusEnabled", true)));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("success", true, "data", Map.of("activityStatusEnabled", true)));
+        }
     }
 
     /** Student sends a support message — auto-fills name/email/phone from JWT */
     @PostMapping("/support-message")
     @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> sendSupportMessage(@RequestBody Map<String, String> body) {
-        Student student = getCurrentStudent();
-        if (student == null) return ResponseEntity.status(401).build();
-        String subject = body.get("subject");
-        String message = body.get("message");
-        if (subject == null || subject.isBlank() || message == null || message.isBlank())
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Subject and message are required"));
-        String name = student.getName() != null ? student.getName() : student.getUser().getName();
-        String email = student.getEmail() != null ? student.getEmail() : student.getUser().getEmail();
-        String phone = student.getPhone() != null ? student.getPhone() : (student.getUser().getPhone() != null ? student.getUser().getPhone() : "");
-        emailService.sendSupportMessage(adminEmail, name, email, phone, subject, message);
-        return ResponseEntity.ok(Map.of("success", true, "message", "Message sent successfully"));
+        try {
+            Student student = getCurrentStudent();
+            if (student == null) return ResponseEntity.status(401).build();
+            String subject = body.get("subject");
+            String message = body.get("message");
+            if (subject == null || subject.isBlank() || message == null || message.isBlank())
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Subject and message are required"));
+            String name = student.getName() != null ? student.getName() : (student.getUser() != null ? student.getUser().getName() : "Student");
+            String email = student.getEmail() != null ? student.getEmail() : (student.getUser() != null ? student.getUser().getEmail() : "");
+            String phone = student.getPhone() != null ? student.getPhone() : (student.getUser() != null && student.getUser().getPhone() != null ? student.getUser().getPhone() : "");
+            emailService.sendSupportMessage(adminEmail, name, email, phone, subject, message);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Message sent successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
+        }
     }
 
     /** Student self-update: name, phone, city, state only */
@@ -255,10 +304,9 @@ public class StudentController {
                 dto.put("whatYouWillLearn", course.getWhatYouWillLearn() != null ? course.getWhatYouWillLearn() : "");
                 dto.put("googleMeetLink", meetLink);
 
-                String covered = course.getCoveredTopics();
-                if ((covered == null || covered.isBlank()) && matchBatch.isPresent()) {
-                    covered = matchBatch.get().getCoveredTopics();
-                }
+                String covered = (matchBatch.isPresent() && matchBatch.get().getCoveredTopics() != null && !matchBatch.get().getCoveredTopics().isBlank())
+                        ? matchBatch.get().getCoveredTopics()
+                        : (course.getCoveredTopics() != null ? course.getCoveredTopics() : "");
                 dto.put("coveredTopics", covered != null ? covered : "");
                 return dto;
             }).collect(Collectors.toList());
@@ -341,16 +389,15 @@ public class StudentController {
                 dto.put("syllabusTopics", course.getSyllabusTopics() != null ? course.getSyllabusTopics() : "");
                 dto.put("whatYouWillLearn", course.getWhatYouWillLearn() != null ? course.getWhatYouWillLearn() : "");
                 dto.put("googleMeetLink", meetLink);
-                String covered = course.getCoveredTopics();
-                if ((covered == null || covered.isBlank()) && !batches.isEmpty()) {
-                    covered = batches.get(0).getCoveredTopics();
-                }
+                String covered = (!batches.isEmpty() && batches.get(0).getCoveredTopics() != null && !batches.get(0).getCoveredTopics().isBlank())
+                        ? batches.get(0).getCoveredTopics()
+                        : (course.getCoveredTopics() != null ? course.getCoveredTopics() : "");
                 dto.put("coveredTopics", covered != null ? covered : "");
             } else {
                 dto.put("syllabusTopics", "");
                 dto.put("whatYouWillLearn", "");
                 dto.put("googleMeetLink", meetLink);
-                String covered = !batches.isEmpty() ? batches.get(0).getCoveredTopics() : "";
+                String covered = !batches.isEmpty() && batches.get(0).getCoveredTopics() != null ? batches.get(0).getCoveredTopics() : "";
                 dto.put("coveredTopics", covered != null ? covered : "");
             }
             return dto;

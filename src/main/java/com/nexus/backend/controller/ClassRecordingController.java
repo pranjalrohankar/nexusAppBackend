@@ -186,6 +186,15 @@ public class ClassRecordingController {
                         .build();
             }
 
+            if (recording.getFileUrl() != null && recording.getFileUrl().startsWith("http") && !recording.getFileUrl().contains("/api/recordings/stream/")) {
+                try {
+                    return ResponseEntity.status(HttpStatus.FOUND)
+                            .location(java.net.URI.create(recording.getFileUrl()))
+                            .header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                            .build();
+                } catch (Exception ignored) {}
+            }
+
             Path filePath = ClassRecordingService.resolveFilePath(recording.getFilePath(), recording.getFileName());
             if (filePath == null || !Files.exists(filePath) || Files.size(filePath) <= 10240) {
                 return ResponseEntity.status(HttpStatus.FOUND)
