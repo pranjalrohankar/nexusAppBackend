@@ -13,9 +13,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
-import java.io.*;
+import java.io.IOException;
+import java.net.URI;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.util.*;
@@ -26,7 +26,8 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "*")
 public class ClassRecordingController {
 
-    private static final int CHUNK_SIZE = 1024 * 1024; // 1 MB chunks
+    private static final String FALLBACK_VIDEO_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+    private static final URI FALLBACK_VIDEO_URI = URI.create(FALLBACK_VIDEO_URL);
 
     private final ClassRecordingService recordingService;
     private final UserRepository userRepository;
@@ -145,8 +146,8 @@ public class ClassRecordingController {
             fallback.put("description", "Interactive Live Class Recording & Walkthrough");
             fallback.put("course", "Full Stack Web Development");
             fallback.put("batch", "FSWD - Morning Batch A");
-            fallback.put("fileUrl", "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4");
-            fallback.put("videoUrl", "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4");
+            fallback.put("fileUrl", FALLBACK_VIDEO_URL);
+            fallback.put("videoUrl", FALLBACK_VIDEO_URL);
             return ResponseEntity.ok(fallback);
         }
     }
@@ -160,7 +161,7 @@ public class ClassRecordingController {
      *  - If local file or DB id is missing, gracefully redirect to public sample video stream instead of 404
      */
     @GetMapping("/stream/{id}")
-    public ResponseEntity<Resource> streamRecording(
+    public ResponseEntity<?> streamRecording(
             @PathVariable Long id,
             @RequestHeader(value = "Range", required = false) String rangeHeader
     ) {
@@ -170,35 +171,43 @@ public class ClassRecordingController {
                 recording = recordingService.getRecordingById(id);
             } catch (Exception ex) {
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .header(HttpHeaders.LOCATION, "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+                        .location(FALLBACK_VIDEO_URI)
                         .build();
             }
 
             if (recording == null) {
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .header(HttpHeaders.LOCATION, "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+                        .location(FALLBACK_VIDEO_URI)
                         .build();
             }
 
             Path filePath = ClassRecordingService.resolveFilePath(recording.getFilePath(), recording.getFileName());
             if (filePath == null || !Files.exists(filePath) || Files.size(filePath) <= 10240) {
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .header(HttpHeaders.LOCATION, "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+                        .location(FALLBACK_VIDEO_URI)
                         .build();
             }
 
             Resource resource = new UrlResource(filePath.toUri());
-            String contentType = recording.getFileType() != null ? recording.getFileType() : "video/mp4";
+            String contentType = recording.getFileType();
+            MediaType mediaType = MediaType.valueOf("video/mp4");
+            if (contentType != null && contentType.contains("/")) {
+                try {
+                    mediaType = MediaType.parseMediaType(contentType);
+                } catch (Exception ignored) {
+                    mediaType = MediaType.valueOf("video/mp4");
+                }
+            }
 
             return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
+                    .contentType(mediaType)
                     .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + recording.getFileName() + "\"")
                     .body(resource);
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.FOUND)
-                    .header(HttpHeaders.LOCATION, "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+                    .location(FALLBACK_VIDEO_URI)
                     .build();
         }
     }
