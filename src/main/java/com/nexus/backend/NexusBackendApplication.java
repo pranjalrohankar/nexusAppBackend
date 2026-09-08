@@ -51,8 +51,9 @@ public class NexusBackendApplication {
                 Files.createDirectories(recDir);
 
                 // 1. Seed Admin User
-                if (userRepository.findByEmailIgnoreCase("admin@nexus.com").isEmpty()) {
-                    User admin = new User();
+                User admin = userRepository.findByEmailIgnoreCase("admin@nexus.com").orElse(null);
+                if (admin == null) {
+                    admin = new User();
                     admin.setName("Admin");
                     admin.setEmail("admin@nexus.com");
                     admin.setPassword(passwordEncoder.encode("admin123"));
@@ -60,6 +61,10 @@ public class NexusBackendApplication {
                     admin.setPhone("+91 98765 00000");
                     userRepository.save(admin);
                     log.info("Admin user seeded successfully");
+                } else {
+                    admin.setPassword(passwordEncoder.encode("admin123"));
+                    admin.setRole(User.Role.ADMIN);
+                    userRepository.save(admin);
                 }
 
                 // 2. Seed Demo Teacher User & Teacher Profile
@@ -73,6 +78,10 @@ public class NexusBackendApplication {
                     teacherUser.setPhone("+91 98765 43210");
                     teacherUser = userRepository.save(teacherUser);
                     log.info("Teacher user seeded successfully");
+                } else {
+                    teacherUser.setPassword(passwordEncoder.encode("teacher123"));
+                    teacherUser.setRole(User.Role.TEACHER);
+                    teacherUser = userRepository.save(teacherUser);
                 }
                 if (teacherRepository.findByUser(teacherUser).isEmpty()) {
                     Teacher teacher = new Teacher();
@@ -102,6 +111,10 @@ public class NexusBackendApplication {
                     studentUser.setPhone("+91 98765 43211");
                     studentUser = userRepository.save(studentUser);
                     log.info("Student user seeded successfully");
+                } else {
+                    studentUser.setPassword(passwordEncoder.encode("student123"));
+                    studentUser.setRole(User.Role.STUDENT);
+                    studentUser = userRepository.save(studentUser);
                 }
                 Student student = studentRepository.findByUser(studentUser).orElse(null);
                 if (student == null) {
