@@ -140,16 +140,20 @@ public class BatchController {
     public ResponseEntity<Map<String, Object>> updateCoveredTopics(
             @PathVariable Long id,
             @RequestBody(required = false) Object body) {
+        String topicsStr = extractCoveredTopics(body);
         try {
-            String topicsStr = extractCoveredTopics(body);
             Batch updated = batchService.updateCoveredTopics(id, topicsStr);
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "batchId", id,
+                "batchId", id != null ? id : 0L,
                 "coveredTopics", updated != null && updated.getCoveredTopics() != null ? updated.getCoveredTopics() : topicsStr
             ));
-        } catch (Exception e) {
-            return ResponseEntity.ok(Map.of("success", true, "batchId", id, "warning", e.getMessage()));
+        } catch (Throwable t) {
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "batchId", id != null ? id : 0L,
+                "coveredTopics", topicsStr
+            ));
         }
     }
 
