@@ -42,7 +42,8 @@ public class ClassRecordingController {
     // Upload Recording
     @PostMapping("/upload")
     public ResponseEntity<ClassRecording> uploadRecording(
-            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam(value = "videoUrl", required = false) String videoUrl,
             @RequestParam("title") String title,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam("classDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate classDate,
@@ -60,7 +61,7 @@ public class ClassRecordingController {
                 : "ANONYMOUS";
 
         ClassRecording recording = recordingService.uploadRecording(
-                file, title, description, classDate, duration, course, batch, currentEmail, currentRole);
+                file, videoUrl, title, description, classDate, duration, course, batch, currentEmail, currentRole);
         return ResponseEntity.ok(recording);
     }
 

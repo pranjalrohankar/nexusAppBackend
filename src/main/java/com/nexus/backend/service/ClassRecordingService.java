@@ -23,6 +23,7 @@ public class ClassRecordingService {
 
     public ClassRecording uploadRecording(
             MultipartFile file,
+            String videoUrl,
             String title,
             String description,
             LocalDate classDate,
@@ -33,8 +34,27 @@ public class ClassRecordingService {
             String uploadedByRole
     ) throws IOException {
 
+        ClassRecording recording = new ClassRecording();
+        recording.setTitle(title);
+        recording.setDescription(description);
+        recording.setClassDate(classDate);
+        recording.setDuration(duration != null && !duration.isBlank() ? duration : "01:00:00");
+        recording.setCourse(course);
+        recording.setBatch(batch);
+        recording.setUploadedByEmail(uploadedByEmail);
+        recording.setUploadedByRole(uploadedByRole);
+        recording.setUploadedAt(LocalDateTime.now());
+
+        if (videoUrl != null && !videoUrl.isBlank()) {
+            recording.setFileUrl(videoUrl.trim());
+            recording.setFileName("Online Video Lecture");
+            recording.setFileType("video/mp4");
+            recording.setFileSize(0L);
+            return repository.save(recording);
+        }
+
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("Please select a video file.");
+            throw new IllegalArgumentException("Please select a video file or provide a video link.");
         }
 
         String contentType = file.getContentType();
@@ -53,20 +73,10 @@ public class ClassRecordingService {
         // Stream directly to disk — no RAM load, works for 1-2 hour videos
         file.transferTo(filePath.toAbsolutePath());
 
-        ClassRecording recording = new ClassRecording();
-        recording.setTitle(title);
-        recording.setDescription(description);
-        recording.setClassDate(classDate);
-        recording.setDuration(duration);
-        recording.setCourse(course);
-        recording.setBatch(batch);
         recording.setFileName(fileName);
         recording.setFilePath("uploads/recordings/" + fileName);
         recording.setFileSize(file.getSize());
         recording.setFileType(contentType);
-        recording.setUploadedByEmail(uploadedByEmail);
-        recording.setUploadedByRole(uploadedByRole);
-        recording.setUploadedAt(LocalDateTime.now());
 
         ClassRecording saved = repository.save(recording);
         saved.setFileUrl("/api/recordings/stream/" + saved.getId());
