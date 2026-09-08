@@ -23,7 +23,7 @@ public class HealthController {
         return ResponseEntity.ok(Map.of(
             "status", "UP",
             "service", "nexus-backend",
-            "version", "2026-09-08-v6-batches-fix",
+            "version", "2026-09-08-v7-debug-all",
             "timestamp", System.currentTimeMillis()
         ));
     }
@@ -71,5 +71,69 @@ public class HealthController {
             result.put("connection_error", e.getClass().getName() + ": " + e.getMessage());
         }
         return ResponseEntity.ok(result);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.nexus.backend.repository.CourseRepository courseRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.nexus.backend.repository.BatchRepository batchRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.nexus.backend.repository.TeacherRepository teacherRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private CourseController courseController;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TeacherController teacherController;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private BatchController batchController;
+
+    @GetMapping("/debug-all")
+    public ResponseEntity<Map<String, Object>> debugAll() {
+        Map<String, Object> res = new HashMap<>();
+        try {
+            res.put("courseRepo_count", courseRepository != null ? courseRepository.count() : "null");
+        } catch (Throwable t) {
+            res.put("courseRepo_err", t.getClass().getName() + ": " + t.getMessage());
+            java.io.StringWriter sw = new java.io.StringWriter();
+            t.printStackTrace(new java.io.PrintWriter(sw));
+            res.put("courseRepo_stack", sw.toString());
+        }
+        try {
+            res.put("batchRepo_count", batchRepository != null ? batchRepository.count() : "null");
+        } catch (Throwable t) {
+            res.put("batchRepo_err", t.getClass().getName() + ": " + t.getMessage());
+            java.io.StringWriter sw = new java.io.StringWriter();
+            t.printStackTrace(new java.io.PrintWriter(sw));
+            res.put("batchRepo_stack", sw.toString());
+        }
+        try {
+            res.put("courseCtrl_all", courseController != null ? courseController.all() : "null");
+        } catch (Throwable t) {
+            res.put("courseCtrl_err", t.getClass().getName() + ": " + t.getMessage());
+            java.io.StringWriter sw = new java.io.StringWriter();
+            t.printStackTrace(new java.io.PrintWriter(sw));
+            res.put("courseCtrl_stack", sw.toString());
+        }
+        try {
+            res.put("teacherCtrl_all", teacherController != null ? teacherController.getAllTeachers() : "null");
+        } catch (Throwable t) {
+            res.put("teacherCtrl_err", t.getClass().getName() + ": " + t.getMessage());
+            java.io.StringWriter sw = new java.io.StringWriter();
+            t.printStackTrace(new java.io.PrintWriter(sw));
+            res.put("teacherCtrl_stack", sw.toString());
+        }
+        try {
+            res.put("batchCtrl_all", batchController != null ? batchController.getAllBatches() : "null");
+        } catch (Throwable t) {
+            res.put("batchCtrl_err", t.getClass().getName() + ": " + t.getMessage());
+            java.io.StringWriter sw = new java.io.StringWriter();
+            t.printStackTrace(new java.io.PrintWriter(sw));
+            res.put("batchCtrl_stack", sw.toString());
+        }
+        return ResponseEntity.ok(res);
     }
 }
