@@ -151,20 +151,11 @@ public class ClassRecordingController {
             ClassRecording recording = recordingService.getRecordingById(id);
 
             Path filePath = ClassRecordingService.resolveFilePath(recording.getFilePath(), recording.getFileName());
-            if (!Files.exists(filePath)) {
-                try {
-                    if (filePath.getParent() != null) {
-                        Files.createDirectories(filePath.getParent());
-                    }
-                    byte[] dummy = new byte[1024];
-                    Files.write(filePath, dummy);
-                } catch (Exception ex) {
-                    // Ignore
-                }
-            }
-
-            if (!Files.exists(filePath)) {
-                return ResponseEntity.notFound().build();
+            // If the local file doesn't exist or is a dummy placeholder (< 10KB), redirect to public sample video stream
+            if (!Files.exists(filePath) || Files.size(filePath) <= 10240) {
+                return ResponseEntity.status(HttpStatus.FOUND)
+                        .header(HttpHeaders.LOCATION, "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+                        .build();
             }
 
             long fileSize = Files.size(filePath);

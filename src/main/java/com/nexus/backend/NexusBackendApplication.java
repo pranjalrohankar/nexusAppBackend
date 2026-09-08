@@ -119,6 +119,12 @@ public class NexusBackendApplication {
                     log.info("Student profile seeded successfully");
                 }
 
+                // Rich Syllabus Module JSON Constants
+                String fswdSyllabus = "[{\"title\":\"Module 1: HTML5, CSS3 & Responsive Design\",\"topics\":[\"HTML5 Semantic Elements & Forms\",\"Modern CSS3 Flexbox & Grid Layouts\",\"Responsive Media Queries & Mobile First\",\"CSS Transitions & Keyframe Animations\"]},{\"title\":\"Module 2: JavaScript ES6+ & Async Programming\",\"topics\":[\"ES6 Syntax, Let/Const & Arrow Functions\",\"Closures, Prototypes & Lexical Scope\",\"Promises, Async/Await & Fetch API\",\"DOM Manipulation & Event Loop\"]},{\"title\":\"Module 3: React 19 & Frontend Architecture\",\"topics\":[\"Components, JSX & Props System\",\"Hooks (useState, useEffect, useMemo, useRef)\",\"State Management & React Context API\",\"React Router & Client-Side Navigation\"]},{\"title\":\"Module 4: Node.js & Express RESTful APIs\",\"topics\":[\"Node.js Architecture & Event-Driven I/O\",\"Express Routing, Middleware & Error Handling\",\"REST API Design & JWT Authentication\",\"File Uploads & Stream Handling\"]},{\"title\":\"Module 5: MongoDB & Full Stack Integration\",\"topics\":[\"NoSQL Document Design & Mongoose Schemas\",\"CRUD Operations & Aggregation Pipeline\",\"Connecting React Frontend to Express Backend\",\"Cloud Deployment & Production Best Practices\"]}]";
+                String javaSyllabus = "[{\"title\":\"Module 1: Core Java & Object Oriented Programming\",\"topics\":[\"OOP Principles (Encapsulation, Inheritance, Polymorphism)\",\"Collections Framework (List, Set, Map)\",\"Exception Handling & Custom Exceptions\",\"Multithreading & Concurrency\"]},{\"title\":\"Module 2: Advanced Java & Database Connectivity (JDBC)\",\"topics\":[\"JDBC Architecture & Driver Types\",\"CRUD Operations & PreparedStatements\",\"Transaction Management & Savepoints\",\"DAO Design Pattern\"]},{\"title\":\"Module 3: Spring Framework Core & Spring Boot 3\",\"topics\":[\"Dependency Injection & Inversion of Control\",\"Spring Boot Starters & Auto-Configuration\",\"Spring Data JPA & Hibernate ORM\",\"Building RESTful Web Services with Spring MVC\"]},{\"title\":\"Module 4: Spring Security & Microservices Architecture\",\"topics\":[\"Spring Security 6 & JWT Token Authentication\",\"Role-Based Access Control (RBAC)\",\"Microservices Communication with REST Template / Feign\",\"API Gateway & Service Discovery\"]},{\"title\":\"Module 5: React Frontend Integration & Deployment\",\"topics\":[\"React Components & Axios API Integration\",\"JWT Token Storage & Auth Interceptors\",\"Dockerizing Spring Boot & PostgreSQL\",\"Production Deployment to Cloud (AWS / Render)\"]}]";
+                String dataScienceSyllabus = "[{\"title\":\"Module 1: Python for Data Science & Numerical Computing\",\"topics\":[\"Python Syntax, Data Structures & Functions\",\"NumPy Arrays & Mathematical Operations\",\"Pandas DataFrames, Series & Data Wrangling\",\"Data Cleaning & Handling Missing Values\"]},{\"title\":\"Module 2: Exploratory Data Analysis & Visualization\",\"topics\":[\"Matplotlib & Seaborn Chart Types\",\"Statistical Distributions & Hypothesis Testing\",\"Correlation Analysis & Feature Selection\",\"Interactive Dashboards\"]},{\"title\":\"Module 3: Supervised Machine Learning Algorithms\",\"topics\":[\"Linear & Logistic Regression\",\"Decision Trees & Random Forests\",\"Support Vector Machines (SVM)\",\"Model Evaluation Metrics (Accuracy, Precision, Recall, F1)\"]},{\"title\":\"Module 4: Unsupervised Learning & Dimensionality Reduction\",\"topics\":[\"K-Means Clustering & Hierarchical Clustering\",\"Principal Component Analysis (PCA)\",\"Anomaly Detection & Outlier Handling\",\"Cross-Validation & Hyperparameter Tuning\"]},{\"title\":\"Module 5: Deep Learning Foundations & Model Deployment\",\"topics\":[\"Neural Network Architecture & Backpropagation\",\"TensorFlow & Keras Model Building\",\"Convolutional Neural Networks (CNN) Basics\",\"Deploying ML Models as REST APIs\"]}]";
+                String uiuxSyllabus = "[{\"title\":\"Module 1: Design Thinking & UX Research\",\"topics\":[\"Design Thinking Process & Empathy Mapping\",\"User Interviews & Qualitative Surveys\",\"User Personas & Customer Journey Maps\",\"Competitive Analysis & Information Architecture\"]},{\"title\":\"Module 2: Wireframing & Low-Fidelity Prototyping\",\"topics\":[\"Low-Fidelity Sketching & Paper Wireframes\",\"Digital Wireframing in Figma\",\"Visual Hierarchy & Layout Grids\",\"User Flow Diagrams & Navigation Patterns\"]},{\"title\":\"Module 3: Advanced Figma & UI Design Systems\",\"topics\":[\"Typography Scales & Color Theory\",\"Auto Layout 5.0 & Responsive Components\",\"Design Tokens, Variables & Styles\",\"Building Scalable Design Systems\"]},{\"title\":\"Module 4: Interactive High-Fidelity Prototyping\",\"topics\":[\"Smart Animate & Micro-Interactions\",\"Component States & Interactive Variants\",\"Form Inputs & Dynamic Overlays\",\"Mobile & Web Responsive Prototypes\"]},{\"title\":\"Module 5: Usability Testing & Design Handoff\",\"topics\":[\"Conducting Moderated & Unmoderated Tests\",\"Single Ease Question & System Usability Scale\",\"Developer Handoff with Figma Dev Mode\",\"Design Portfolio & Case Study Creation\"]}]";
+
                 // 4. Seed Courses
                 if (courseRepository.count() == 0) {
                     Course c1 = Course.builder()
@@ -133,8 +139,8 @@ public class NexusBackendApplication {
                         .price(new BigDecimal("499.00"))
                         .status(Course.Status.ACTIVE)
                         .totalSessions(36)
-                        .syllabusTopics("HTML5 & CSS3, JavaScript ES6+, React 19, Node.js & Express, MongoDB, RESTful APIs, DevOps Deployment")
-                        .whatYouWillLearn("Full stack architectures, production React patterns, authentication, CI/CD, responsive web apps")
+                        .syllabusTopics(fswdSyllabus)
+                        .whatYouWillLearn("Full stack architectures\nProduction React patterns\nJWT Authentication & Security\nCI/CD & Cloud Deployment\nResponsive Web Applications")
                         .build();
 
                     Course c2 = Course.builder()
@@ -149,8 +155,8 @@ public class NexusBackendApplication {
                         .price(new BigDecimal("599.00"))
                         .status(Course.Status.ACTIVE)
                         .totalSessions(42)
-                        .syllabusTopics("Core Java, Spring Boot 3, Spring Data JPA, Microservices, Docker, React Frontend")
-                        .whatYouWillLearn("Enterprise Java backend, secure APIs, relational database design, cloud deployment")
+                        .syllabusTopics(javaSyllabus)
+                        .whatYouWillLearn("Enterprise Java Backend\nSpring Boot 3 & Spring Data JPA\nMicroservices Architecture\nDocker & Cloud Deployment\nReact Frontend Integration")
                         .build();
 
                     Course c3 = Course.builder()
@@ -165,8 +171,8 @@ public class NexusBackendApplication {
                         .price(new BigDecimal("699.00"))
                         .status(Course.Status.ACTIVE)
                         .totalSessions(48)
-                        .syllabusTopics("Python, NumPy, Pandas, Scikit-learn, Supervised Learning, Deep Learning basics")
-                        .whatYouWillLearn("Statistical analysis, machine learning pipelines, visualization, model deployment")
+                        .syllabusTopics(dataScienceSyllabus)
+                        .whatYouWillLearn("Statistical Analysis & EDA\nSupervised & Unsupervised Machine Learning\nFeature Engineering & Pipelines\nModel Evaluation & Optimization\nDeep Learning & Neural Networks")
                         .build();
 
                     Course c4 = Course.builder()
@@ -181,12 +187,33 @@ public class NexusBackendApplication {
                         .price(new BigDecimal("399.00"))
                         .status(Course.Status.ACTIVE)
                         .totalSessions(24)
-                        .syllabusTopics("Design Thinking, Figma Advanced, Wireframing, Prototyping, Usability Testing, Portfolio Building")
-                        .whatYouWillLearn("Design systems, micro-interactions, responsive UX, client presentations")
+                        .syllabusTopics(uiuxSyllabus)
+                        .whatYouWillLearn("Design Thinking & User Research\nFigma Advanced Auto Layout\nDesign Systems & Token Architecture\nInteractive High-Fidelity Prototyping\nUsability Testing & Design Handoff")
                         .build();
 
                     courseRepository.saveAll(List.of(c1, c2, c3, c4));
                     log.info("Default courses seeded successfully");
+                } else {
+                    // Update existing courses if syllabus is not yet structured JSON
+                    List<Course> existing = courseRepository.findAll();
+                    for (Course c : existing) {
+                        String syl = c.getSyllabusTopics();
+                        if (syl == null || !syl.trim().startsWith("[")) {
+                            if (c.getTitle() != null && c.getTitle().contains("Full Stack Web")) {
+                                c.setSyllabusTopics(fswdSyllabus);
+                                courseRepository.save(c);
+                            } else if (c.getTitle() != null && c.getTitle().contains("Java Full Stack")) {
+                                c.setSyllabusTopics(javaSyllabus);
+                                courseRepository.save(c);
+                            } else if (c.getTitle() != null && c.getTitle().contains("Data Science")) {
+                                c.setSyllabusTopics(dataScienceSyllabus);
+                                courseRepository.save(c);
+                            } else if (c.getTitle() != null && c.getTitle().contains("UI/UX")) {
+                                c.setSyllabusTopics(uiuxSyllabus);
+                                courseRepository.save(c);
+                            }
+                        }
+                    }
                 }
 
                 // 5. Seed Batches
