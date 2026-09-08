@@ -38,20 +38,31 @@ public class JwtUtil {
     }
 
     public String extractEmail(String token) {
-        return Jwts.parser().verifyWith(getKey()).build()
-                .parseSignedClaims(token).getPayload().getSubject();
+        if (token == null || token.isBlank()) return null;
+        try {
+            return Jwts.parser().verifyWith(getKey()).build()
+                    .parseSignedClaims(token.trim()).getPayload().getSubject();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public String extractRole(String token) {
-        return (String) Jwts.parser().verifyWith(getKey()).build()
-                .parseSignedClaims(token).getPayload().get("role");
+        if (token == null || token.isBlank()) return null;
+        try {
+            return (String) Jwts.parser().verifyWith(getKey()).build()
+                    .parseSignedClaims(token.trim()).getPayload().get("role");
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public boolean isValid(String token) {
+        if (token == null || token.isBlank()) return false;
         try {
-            Jwts.parser().verifyWith(getKey()).build().parseSignedClaims(token);
+            Jwts.parser().verifyWith(getKey()).build().parseSignedClaims(token.trim());
             return true;
-        } catch (JwtException e) {
+        } catch (Exception e) {
             return false;
         }
     }

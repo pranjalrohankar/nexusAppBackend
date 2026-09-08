@@ -29,39 +29,63 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e) -> {
+                    res.setContentType("application/json");
+                    res.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                    res.getOutputStream().println("{\"success\":false,\"message\":\"Unauthorized: " + e.getMessage() + "\"}");
+                })
+                .accessDeniedHandler((req, res, e) -> {
+                    res.setContentType("application/json");
+                    res.setStatus(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN);
+                    res.getOutputStream().println("{\"success\":false,\"message\":\"Access Denied: " + e.getMessage() + "\"}");
+                })
+            )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/health", "/api/db-test", "/api/debug-all").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/batches/*/covered-topics", "/api/batches/**/covered-topics").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/batches").authenticated()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/batches/**").authenticated()
-                .requestMatchers("/api/batches/**").hasAnyRole("ADMIN", "TEACHER")
-                .requestMatchers("/api/teachers/profile").hasAnyRole("TEACHER", "ADMIN")
-                .requestMatchers("/api/teachers/my-batches").hasAnyRole("TEACHER", "ADMIN")
-                .requestMatchers("/api/teachers/my-courses-batches").hasAnyRole("TEACHER", "ADMIN")
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/teachers/all").authenticated()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/teachers/{id}").authenticated()
-                .requestMatchers("/api/teachers/**").hasAnyRole("TEACHER", "ADMIN")
-                .requestMatchers("/api/enquiries/**").permitAll()
-                .requestMatchers("/api/materials/**").permitAll()
-                .requestMatchers("/api/recordings/**").permitAll()
+
+                // Enquiries
+                .requestMatchers("/api/enquiries", "/api/enquiries/**").permitAll()
+
+                // Materials & Recordings
+                .requestMatchers("/api/materials", "/api/materials/**").permitAll()
+                .requestMatchers("/api/recordings", "/api/recordings/**").permitAll()
+
+                // Courses
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/courses", "/api/courses/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/courses/*/meet-link", "/api/courses/**/meet-link").hasAnyRole("ADMIN", "TEACHER")
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/courses/*/covered-topics", "/api/courses/**/covered-topics", "/api/courses/by-title/covered-topics").hasAnyRole("ADMIN", "TEACHER")
+                .requestMatchers("/api/courses", "/api/courses/**").hasAnyRole("ADMIN", "TEACHER")
+
+                // Batches
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/batches", "/api/batches/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/batches/*/covered-topics", "/api/batches/**/covered-topics").hasAnyRole("ADMIN", "TEACHER")
-                .requestMatchers("/api/courses", "/api/courses/**").hasRole("ADMIN")
+                .requestMatchers("/api/batches", "/api/batches/**").hasAnyRole("ADMIN", "TEACHER")
+
+                // Teachers
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/teachers/all", "/api/teachers/{id}").permitAll()
+                .requestMatchers("/api/teachers/profile", "/api/teachers/my-batches", "/api/teachers/my-courses-batches").hasAnyRole("TEACHER", "ADMIN")
+                .requestMatchers("/api/teachers", "/api/teachers/**").hasAnyRole("TEACHER", "ADMIN")
+
+                // Admin
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                // Enrollments
                 .requestMatchers("/api/enrollments/count/course").permitAll()
-                .requestMatchers("/api/student/materials", "/api/student/recordings").hasAnyRole("STUDENT", "TEACHER", "ADMIN")
-                .requestMatchers("/api/student/**").hasAnyRole("STUDENT", "ADMIN", "TEACHER")
                 .requestMatchers("/api/enrollments/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+
+                // Student & Notifications & Users
+                .requestMatchers("/api/student/**").hasAnyRole("STUDENT", "ADMIN", "TEACHER")
                 .requestMatchers("/api/notifications/**").hasAnyRole("TEACHER", "ADMIN", "STUDENT")
                 .requestMatchers("/api/users/**").authenticated()
+
+                // Tests
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/tests", "/api/tests/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/tests/submit").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/tests").hasAnyRole("ADMIN", "TEACHER")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/tests", "/api/tests/**").hasAnyRole("ADMIN", "TEACHER")
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/tests/**").hasAnyRole("ADMIN", "TEACHER")
                 .requestMatchers("/api/tests/submissions/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers("/api/tests/**").authenticated()

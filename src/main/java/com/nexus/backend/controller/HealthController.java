@@ -23,7 +23,7 @@ public class HealthController {
         return ResponseEntity.ok(Map.of(
             "status", "UP",
             "service", "nexus-backend",
-            "version", "2026-09-08-v7-debug-all",
+            "version", "2026-09-08-v8-security-harden",
             "timestamp", System.currentTimeMillis()
         ));
     }

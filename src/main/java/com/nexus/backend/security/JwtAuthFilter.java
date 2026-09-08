@@ -26,19 +26,29 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+        try {
+            String authHeader = request.getHeader("Authorization");
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            if (jwtUtil.isValid(token)) {
-                String email = jwtUtil.extractEmail(token);
-                String role = jwtUtil.extractRole(token);
-                var auth = new UsernamePasswordAuthenticationToken(
-                        email, null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                );
-                SecurityContextHolder.getContext().setAuthentication(auth);
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7).trim();
+                if (jwtUtil.isValid(token)) {
+                    String email = jwtUtil.extractEmail(token);
+                    String role = jwtUtil.extractRole(token);
+                    if (email != null && !email.isBlank()) {
+                        String roleAuthority = "ROLE_STUDENT";
+                        if (role != null && !role.isBlank()) {
+                            roleAuthority = role.startsWith("ROLE_") ? role : "ROLE_" + role.toUpperCase();
+                        }
+                        var auth = new UsernamePasswordAuthenticationToken(
+                                email, null,
+                                List.of(new SimpleGrantedAuthority(roleAuthority))
+                        );
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    }
+                }
             }
+        } catch (Exception ignored) {
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
