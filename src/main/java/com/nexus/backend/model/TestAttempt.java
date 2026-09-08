@@ -31,6 +31,7 @@ public class TestAttempt {
     @JoinColumn(name = "test_id")
     private Test test;
 
+    @JsonIgnore
     @Transient
     public Long getStudentId() {
         try {
@@ -40,6 +41,7 @@ public class TestAttempt {
         }
     }
 
+    @JsonIgnore
     @Transient
     public Long getTestId() {
         try {

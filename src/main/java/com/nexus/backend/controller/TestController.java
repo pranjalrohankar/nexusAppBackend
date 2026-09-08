@@ -175,11 +175,13 @@ public class TestController {
      */
     @GetMapping("/submissions/my")
     public ResponseEntity<ApiResponse<?>> getMySubmissions() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         User user = getCurrentUser();
-        if (user == null) {
+        String email = user != null ? user.getEmail() : (auth != null ? auth.getName() : null);
+        if (email == null || email.isBlank() || "anonymousUser".equalsIgnoreCase(email)) {
             return ResponseEntity.status(401).body(ApiResponse.error("Unauthorized"));
         }
-        List<TestAttempt> list = testAttemptService.getAttemptsByStudentEmail(user.getEmail());
+        List<TestAttempt> list = testAttemptService.getAttemptsByStudentEmail(email);
         List<Map<String, Object>> dtoList = list.stream()
                 .map(this::toSubmissionDto)
                 .collect(Collectors.toList());
