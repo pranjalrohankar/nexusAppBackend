@@ -232,6 +232,12 @@ public class CourseController {
         if (c == null) return null;
         String meetLink = c.getGoogleMeetLink() != null ? c.getGoogleMeetLink()
                         : c.getMeetLink();
+        int enrollCount = 0;
+        if (c.getTitle() != null && !c.getTitle().isBlank()) {
+            try {
+                enrollCount = enrollmentRepository.countByCourseTitleIgnoreCase(c.getTitle().trim());
+            } catch (Exception ignored) {}
+        }
         return CourseDto.builder()
                 .id(c.getId())
                 .title(c.getTitle())
@@ -250,7 +256,7 @@ public class CourseController {
                 .maxCapacity(c.getMaxCapacity())
                 .price(c.getPrice())
                 .status(c.getStatus())
-                .enrollmentCount(enrollmentRepository.countByCourseTitleIgnoreCase(c.getTitle()))
+                .enrollmentCount(enrollCount)
                 .coveredTopics(c.getCoveredTopics() != null ? c.getCoveredTopics() : "")
                 .build();
     }

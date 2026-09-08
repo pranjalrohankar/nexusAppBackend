@@ -592,13 +592,27 @@ public class TeacherController {
     }
 
     private TeacherStatsDTO buildTeacherStats(Teacher teacher) {
-        List<TeacherCourseAssignment> assignments = assignmentRepository.findByTeacher(teacher);
+        if (teacher == null) return null;
+
+        List<TeacherCourseAssignment> assignments = Collections.emptyList();
+        try {
+            assignments = assignmentRepository.findByTeacher(teacher);
+            if (assignments == null) assignments = Collections.emptyList();
+        } catch (Exception ignored) {}
 
         // Collect course titles: from explicit assignments + from batches assigned to this teacher
-        Set<String> courseTitlesFromBatches = batchRepository.findByInstructorIgnoreCase(teacher.getName())
-            .stream().map(b -> b.getSelectCourse()).filter(Objects::nonNull).collect(Collectors.toSet());
+        final Set<String> courseTitlesFromBatches = new HashSet<>();
+        if (teacher.getName() != null && !teacher.getName().isBlank()) {
+            try {
+                courseTitlesFromBatches.addAll(
+                    batchRepository.findByInstructorIgnoreCase(teacher.getName().trim())
+                        .stream().map(b -> b != null ? b.getSelectCourse() : null).filter(Objects::nonNull).collect(Collectors.toSet())
+                );
+            } catch (Exception ignored) {}
+        }
 
         List<TeacherStatsDTO.CourseDTO> courseDTOs = assignments.stream()
+            .filter(a -> a != null && a.getCourse() != null)
             .map(a -> TeacherStatsDTO.CourseDTO.builder()
                 .courseId(a.getCourse().getId())
                 .title(a.getCourse().getTitle())
@@ -608,33 +622,41 @@ public class TeacherController {
 
         // If no explicit assignments, build courseDTOs from batch course titles
         if (courseDTOs.isEmpty() && !courseTitlesFromBatches.isEmpty()) {
-            courseDTOs = courseRepository.findAll().stream()
-                .filter(c -> courseTitlesFromBatches.stream()
-                    .anyMatch(t -> t.equalsIgnoreCase(c.getTitle())))
-                .map(c -> TeacherStatsDTO.CourseDTO.builder()
-                    .courseId(c.getId())
-                    .title(c.getTitle())
-                    .category(c.getCategory())
-                    .build())
-                .collect(Collectors.toList());
+            try {
+                courseDTOs = courseRepository.findAll().stream()
+                    .filter(c -> c != null && c.getTitle() != null && courseTitlesFromBatches.stream()
+                        .anyMatch(t -> t != null && t.equalsIgnoreCase(c.getTitle().trim())))
+                    .map(c -> TeacherStatsDTO.CourseDTO.builder()
+                        .courseId(c.getId())
+                        .title(c.getTitle())
+                        .category(c.getCategory())
+                        .build())
+                    .collect(Collectors.toList());
+            } catch (Exception ignored) {}
         }
 
         // Merge all course titles for student count
         Set<String> allCourseTitles = new HashSet<>();
-        courseDTOs.forEach(c -> allCourseTitles.add(c.getTitle()));
+        courseDTOs.forEach(c -> { if (c != null && c.getTitle() != null) allCourseTitles.add(c.getTitle()); });
         allCourseTitles.addAll(courseTitlesFromBatches);
 
-        int studentsCount = allCourseTitles.isEmpty() ? 0
-            : enrollmentRepository.countByCourseTitleIn(new ArrayList<>(allCourseTitles));
+        int studentsCount = 0;
+        if (!allCourseTitles.isEmpty()) {
+            try {
+                studentsCount = enrollmentRepository.countByCourseTitleIn(new ArrayList<>(allCourseTitles));
+            } catch (Exception ignored) {}
+        }
 
         String teacherStatus = (teacher.getUser() != null && !teacher.getUser().isActive()) ? "Inactive" : "Active";
 
         String onlineStatus = "offline";
         if (teacher.getUser() != null) {
-            com.nexus.backend.model.SecuritySettings ss = securitySettingsRepository.findByUserId(teacher.getUser().getId()).orElse(null);
-            boolean activityEnabled = ss == null || ss.isActivityStatusEnabled();
-            boolean isOnline = ss != null && ss.isOnline();
-            onlineStatus = activityEnabled ? (isOnline ? "online" : "offline") : "always_online";
+            try {
+                com.nexus.backend.model.SecuritySettings ss = securitySettingsRepository.findByUserId(teacher.getUser().getId()).orElse(null);
+                boolean activityEnabled = ss == null || ss.isActivityStatusEnabled();
+                boolean isOnline = ss != null && ss.isOnline();
+                onlineStatus = activityEnabled ? (isOnline ? "online" : "offline") : "always_online";
+            } catch (Exception ignored) {}
         }
 
         return TeacherStatsDTO.builder()
