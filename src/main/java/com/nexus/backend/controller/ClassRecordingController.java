@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "*")
 public class ClassRecordingController {
 
-    private static final String FALLBACK_VIDEO_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+    private static final String FALLBACK_VIDEO_URL = "https://vjs.zencdn.net/v/oceans.mp4";
     private static final java.net.URI FALLBACK_VIDEO_URI = java.net.URI.create(FALLBACK_VIDEO_URL);
 
     private final ClassRecordingService recordingService;
