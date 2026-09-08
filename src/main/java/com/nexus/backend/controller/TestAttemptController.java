@@ -34,15 +34,16 @@ public class TestAttemptController {
             @PathVariable Long studentId) {
 
         Optional<Student> studentOpt = studentRepository.findById(studentId);
-        if (studentOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
+        Student student = studentOpt.orElse(null);
+
+        List<TestAttempt> attempts = student != null ? testAttemptRepository.findByStudent(student) : new java.util.ArrayList<>();
+        if (attempts.isEmpty()) {
+            attempts = testAttemptRepository.findByStudentId(studentId);
         }
 
-        Student student = studentOpt.get();
-        List<TestAttempt> attempts = testAttemptRepository.findByStudent(student);
-
         // Also merge any attempts recorded with student's email
-        String email = student.getEmail() != null ? student.getEmail() : (student.getUser() != null ? student.getUser().getEmail() : null);
+        String email = (student != null && student.getEmail() != null) ? student.getEmail()
+                : (student != null && student.getUser() != null ? student.getUser().getEmail() : null);
         if (email != null && !email.isBlank()) {
             List<TestAttempt> byEmail = testAttemptRepository.findByStudentEmailIgnoreCaseOrderBySubmittedAtDesc(email.trim());
             Map<Long, TestAttempt> merged = new HashMap<>();
@@ -61,20 +62,19 @@ public class TestAttemptController {
             Map<String, Object> dto = new HashMap<>();
             dto.put("id", attempt.getId());
             dto.put("marks", attempt.getMarksObtained());
+            dto.put("obtainedMarks", attempt.getMarksObtained());
             dto.put("date", attempt.getAttemptDate() != null ? attempt.getAttemptDate() : "");
             dto.put("time", attempt.getAttemptTime() != null ? attempt.getAttemptTime() : "");
+            dto.put("status", attempt.getStatus() != null ? attempt.getStatus() : "GRADED");
 
-            if (attempt.getTest() != null) {
-                dto.put("testName", attempt.getTest().getTestName());
-                dto.put("subject", attempt.getTest().getTestName());
-                dto.put("totalMarks", attempt.getTest().getTotalMarks());
-                dto.put("courseTitle", attempt.getTest().getCourseTitle());
-            } else {
-                dto.put("testName", "Test");
-                dto.put("subject", "Test");
-                dto.put("totalMarks", null);
-                dto.put("courseTitle", "");
+            String testTitle = attempt.getTestTitle();
+            if (testTitle == null || testTitle.isBlank()) {
+                testTitle = "Assessment";
             }
+            dto.put("testName", testTitle);
+            dto.put("subject", testTitle);
+            dto.put("totalMarks", attempt.getTotalMarks() != null ? attempt.getTotalMarks() : 100);
+            dto.put("courseTitle", "");
             return dto;
         }).collect(Collectors.toList());
 
