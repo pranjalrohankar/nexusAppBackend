@@ -153,6 +153,11 @@ public class StudyMaterialController {
         logger.info("Fetching all study materials.");
 
         List<StudyMaterial> materials = service.getAllMaterials(currentEmail, currentRole);
+        materials.forEach(m -> {
+            if (m.getFileUrl() == null || m.getFileUrl().isBlank()) {
+                m.setFileUrl("/api/materials/download/" + m.getId());
+            }
+        });
 
         logger.info("Returned {} study materials.", materials.size());
 
@@ -172,6 +177,11 @@ public class StudyMaterialController {
         logger.info("Fetching study materials for course: {}", course);
 
         List<StudyMaterial> materials = service.getMaterialsByCourse(course, currentEmail, currentRole);
+        materials.forEach(m -> {
+            if (m.getFileUrl() == null || m.getFileUrl().isBlank()) {
+                m.setFileUrl("/api/materials/download/" + m.getId());
+            }
+        });
 
         logger.info("Found {} study materials for course: {}",
                 materials.size(), course);

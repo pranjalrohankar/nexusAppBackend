@@ -101,7 +101,9 @@ public class ClassRecordingController {
             dto.put("batch", r.getBatch());
             dto.put("fileName", r.getFileName());
             dto.put("filePath", r.getFilePath());
-            dto.put("fileUrl", r.getFileUrl());
+            String streamUrl = (r.getFileUrl() != null && !r.getFileUrl().isBlank()) ? r.getFileUrl() : ("/api/recordings/stream/" + r.getId());
+            dto.put("fileUrl", streamUrl);
+            dto.put("videoUrl", streamUrl);
             dto.put("fileSize", r.getFileSize());
             dto.put("fileType", r.getFileType());
             dto.put("uploadedByEmail", r.getUploadedByEmail());
