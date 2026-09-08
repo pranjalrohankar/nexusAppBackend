@@ -31,14 +31,18 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, e) -> {
-                    res.setContentType("application/json");
-                    res.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
-                    res.getOutputStream().println("{\"success\":false,\"message\":\"Unauthorized: " + e.getMessage() + "\"}");
+                    try {
+                        res.setContentType("application/json");
+                        res.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                        res.getWriter().write("{\"success\":false,\"message\":\"Unauthorized: " + e.getMessage() + "\"}");
+                    } catch (Exception ignored) {}
                 })
                 .accessDeniedHandler((req, res, e) -> {
-                    res.setContentType("application/json");
-                    res.setStatus(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN);
-                    res.getOutputStream().println("{\"success\":false,\"message\":\"Access Denied: " + e.getMessage() + "\"}");
+                    try {
+                        res.setContentType("application/json");
+                        res.setStatus(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN);
+                        res.getWriter().write("{\"success\":false,\"message\":\"Access Denied: " + e.getMessage() + "\"}");
+                    } catch (Exception ignored) {}
                 })
             )
             .authorizeHttpRequests(auth -> auth
@@ -53,6 +57,8 @@ public class SecurityConfig {
                 // Materials & Recordings
                 .requestMatchers("/api/materials", "/api/materials/**").permitAll()
                 .requestMatchers("/api/recordings", "/api/recordings/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/student/recordings", "/api/student/materials").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/student/activity-status").permitAll()
 
                 // Courses
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/courses", "/api/courses/**").permitAll()
