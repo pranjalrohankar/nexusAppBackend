@@ -18,6 +18,7 @@ public class BatchDto{
     private String classTimings;
     private String duration;
     private String googleMeetLink;
+    private String coveredTopics;
 
     public String getBatchName() { return batchName; }
     public void setBatchName(String batchName) { this.batchName = batchName; }
@@ -48,4 +49,7 @@ public class BatchDto{
 
     public String getGoogleMeetLink() { return googleMeetLink; }
     public void setGoogleMeetLink(String googleMeetLink) { this.googleMeetLink = googleMeetLink; }
+
+    public String getCoveredTopics() { return coveredTopics; }
+    public void setCoveredTopics(String coveredTopics) { this.coveredTopics = coveredTopics; }
 }

@@ -56,4 +56,6 @@ public class CourseDto {
     private Course.Status status;
 
     private Integer enrollmentCount;
+
+    private String coveredTopics;
 }

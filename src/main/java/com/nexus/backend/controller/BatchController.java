@@ -98,4 +98,41 @@ public class BatchController {
 
         return ResponseEntity.ok(students);
     }
+
+    @PutMapping("/{id}/covered-topics")
+    public ResponseEntity<Map<String, Object>> updateCoveredTopics(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        try {
+            Object raw = body.get("coveredTopics");
+            if (raw == null) raw = body.get("topics");
+            String topicsStr = "";
+            if (raw instanceof List) {
+                topicsStr = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(raw);
+            } else if (raw != null) {
+                topicsStr = raw.toString();
+            }
+            Batch updated = batchService.updateCoveredTopics(id, topicsStr);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "batchId", id,
+                "coveredTopics", updated.getCoveredTopics() != null ? updated.getCoveredTopics() : ""
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/covered-topics")
+    public ResponseEntity<Map<String, Object>> getCoveredTopics(@PathVariable Long id) {
+        Batch batch = batchService.getBatchById(id);
+        if (batch == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "batchId", id,
+            "coveredTopics", batch.getCoveredTopics() != null ? batch.getCoveredTopics() : ""
+        ));
+    }
 }

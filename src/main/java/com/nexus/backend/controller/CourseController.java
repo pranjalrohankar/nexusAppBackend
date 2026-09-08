@@ -127,6 +127,106 @@ public class CourseController {
         }
     }
 
+    @PutMapping("/{id}/covered-topics")
+    public ResponseEntity<Map<String, Object>> updateCourseCoveredTopics(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        try {
+            Course course = service.getCourseById(id);
+            Object raw = body.get("coveredTopics");
+            if (raw == null) raw = body.get("topics");
+            String topicsStr = "";
+            if (raw instanceof List) {
+                topicsStr = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(raw);
+            } else if (raw != null) {
+                topicsStr = raw.toString();
+            }
+            course.setCoveredTopics(topicsStr);
+            service.saveCourse(course);
+
+            // Sync to matching batches
+            if (course.getTitle() != null) {
+                final String finalTopics = topicsStr;
+                batchRepository.findAll().stream()
+                    .filter(b -> b.getSelectCourse() != null && b.getSelectCourse().equalsIgnoreCase(course.getTitle().trim()))
+                    .forEach(b -> {
+                        b.setCoveredTopics(finalTopics);
+                        batchRepository.save(b);
+                    });
+            }
+
+            return ResponseEntity.ok(Map.of("success", true, "courseId", id, "coveredTopics", topicsStr));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/covered-topics")
+    public ResponseEntity<Map<String, Object>> getCourseCoveredTopics(@PathVariable Long id) {
+        try {
+            Course course = service.getCourseById(id);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "courseId", id,
+                "coveredTopics", course.getCoveredTopics() != null ? course.getCoveredTopics() : ""
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/by-title/covered-topics")
+    public ResponseEntity<Map<String, Object>> updateCoveredTopicsByTitle(
+            @RequestParam String title,
+            @RequestBody Map<String, Object> body) {
+        try {
+            Object raw = body.get("coveredTopics");
+            if (raw == null) raw = body.get("topics");
+            String topicsStr = "";
+            if (raw instanceof List) {
+                topicsStr = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(raw);
+            } else if (raw != null) {
+                topicsStr = raw.toString();
+            }
+            final String finalTopics = topicsStr;
+
+            service.listAllCourses().stream()
+                .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(title.trim()))
+                .forEach(c -> {
+                    c.setCoveredTopics(finalTopics);
+                    service.saveCourse(c);
+                });
+
+            batchRepository.findAll().stream()
+                .filter(b -> b.getSelectCourse() != null && b.getSelectCourse().equalsIgnoreCase(title.trim()))
+                .forEach(b -> {
+                    b.setCoveredTopics(finalTopics);
+                    batchRepository.save(b);
+                });
+
+            return ResponseEntity.ok(Map.of("success", true, "title", title, "coveredTopics", topicsStr));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/by-title/covered-topics")
+    public ResponseEntity<Map<String, Object>> getCoveredTopicsByTitle(@RequestParam String title) {
+        String topics = service.listAllCourses().stream()
+            .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(title.trim()))
+            .map(Course::getCoveredTopics)
+            .filter(t -> t != null && !t.isBlank())
+            .findFirst().orElse("");
+        if (topics.isBlank()) {
+            topics = batchRepository.findAll().stream()
+                .filter(b -> b.getSelectCourse() != null && b.getSelectCourse().equalsIgnoreCase(title.trim()))
+                .map(com.nexus.backend.model.Batch::getCoveredTopics)
+                .filter(t -> t != null && !t.isBlank())
+                .findFirst().orElse("");
+        }
+        return ResponseEntity.ok(Map.of("success", true, "title", title, "coveredTopics", topics));
+    }
+
     // Simple mappers; consider using MapStruct for larger projects
     private CourseDto toDto(Course c) {
         if (c == null) return null;
@@ -151,6 +251,7 @@ public class CourseController {
                 .price(c.getPrice())
                 .status(c.getStatus())
                 .enrollmentCount(enrollmentRepository.countByCourseTitleIgnoreCase(c.getTitle()))
+                .coveredTopics(c.getCoveredTopics() != null ? c.getCoveredTopics() : "")
                 .build();
     }
 
@@ -175,6 +276,9 @@ public class CourseController {
         c.setMaxCapacity(d.getMaxCapacity());
         c.setPrice(d.getPrice());
         c.setStatus(d.getStatus());
+        if (d.getCoveredTopics() != null) {
+            c.setCoveredTopics(d.getCoveredTopics());
+        }
         return c;
     }
 }

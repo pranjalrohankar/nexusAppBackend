@@ -94,6 +94,7 @@ public class TeacherController {
                     m.put("title", c.getTitle());
                     m.put("category", c.getCategory() != null ? c.getCategory() : "");
                     m.put("syllabusTopics", c.getSyllabusTopics() != null ? c.getSyllabusTopics() : "");
+                    m.put("coveredTopics", c.getCoveredTopics() != null ? c.getCoveredTopics() : "");
                     return m;
                 })
                 .collect(Collectors.toList());
@@ -106,6 +107,7 @@ public class TeacherController {
                         m.put("title", c.getTitle());
                         m.put("category", c.getCategory() != null ? c.getCategory() : "");
                         m.put("syllabusTopics", c.getSyllabusTopics() != null ? c.getSyllabusTopics() : "");
+                        m.put("coveredTopics", c.getCoveredTopics() != null ? c.getCoveredTopics() : "");
                         return m;
                     })
                     .collect(Collectors.toList());
@@ -218,7 +220,15 @@ public class TeacherController {
                         }
                         m.put("totalSessions", c.getTotalSessions());
                         m.put("syllabusTopics", c.getSyllabusTopics());
+                        String covered = (batch.getCoveredTopics() != null && !batch.getCoveredTopics().isBlank())
+                            ? batch.getCoveredTopics()
+                            : (c.getCoveredTopics() != null ? c.getCoveredTopics() : "");
+                        m.put("coveredTopics", covered);
                     });
+
+                if (!m.containsKey("coveredTopics")) {
+                    m.put("coveredTopics", batch.getCoveredTopics() != null ? batch.getCoveredTopics() : "");
+                }
                 return m;
             }).collect(Collectors.toList());
 

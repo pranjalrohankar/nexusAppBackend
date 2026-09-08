@@ -82,6 +82,9 @@ public class Course {
     @Column(name = "meet_link")
     private String meetLink;
 
+    @Column(name = "covered_topics", columnDefinition = "TEXT")
+    private String coveredTopics;
+
     public enum Status {
         ACTIVE,
         INACTIVE,

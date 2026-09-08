@@ -254,6 +254,12 @@ public class StudentController {
                 dto.put("syllabusTopics", course.getSyllabusTopics() != null ? course.getSyllabusTopics() : "");
                 dto.put("whatYouWillLearn", course.getWhatYouWillLearn() != null ? course.getWhatYouWillLearn() : "");
                 dto.put("googleMeetLink", meetLink);
+
+                String covered = course.getCoveredTopics();
+                if ((covered == null || covered.isBlank()) && matchBatch.isPresent()) {
+                    covered = matchBatch.get().getCoveredTopics();
+                }
+                dto.put("coveredTopics", covered != null ? covered : "");
                 return dto;
             }).collect(Collectors.toList());
 
@@ -335,10 +341,17 @@ public class StudentController {
                 dto.put("syllabusTopics", course.getSyllabusTopics() != null ? course.getSyllabusTopics() : "");
                 dto.put("whatYouWillLearn", course.getWhatYouWillLearn() != null ? course.getWhatYouWillLearn() : "");
                 dto.put("googleMeetLink", meetLink);
+                String covered = course.getCoveredTopics();
+                if ((covered == null || covered.isBlank()) && !batches.isEmpty()) {
+                    covered = batches.get(0).getCoveredTopics();
+                }
+                dto.put("coveredTopics", covered != null ? covered : "");
             } else {
                 dto.put("syllabusTopics", "");
                 dto.put("whatYouWillLearn", "");
                 dto.put("googleMeetLink", meetLink);
+                String covered = !batches.isEmpty() ? batches.get(0).getCoveredTopics() : "";
+                dto.put("coveredTopics", covered != null ? covered : "");
             }
             return dto;
         }).collect(Collectors.toList());

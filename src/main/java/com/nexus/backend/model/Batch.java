@@ -65,4 +65,8 @@ public class Batch {
 
     // Google Meet link for online classes
     private String googleMeetLink;
+
+    // JSON array or delimiter-separated string of topics marked as covered by teacher
+    @Column(name = "covered_topics", columnDefinition = "TEXT")
+    private String coveredTopics;
 }

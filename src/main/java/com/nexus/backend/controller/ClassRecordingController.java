@@ -5,17 +5,17 @@ import com.nexus.backend.repository.BatchRepository;
 import com.nexus.backend.repository.UserRepository;
 import com.nexus.backend.service.ClassRecordingService;
 
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 
-import java.io.IOException;
-import java.net.URI;
+import java.io.*;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.util.*;
@@ -27,13 +27,14 @@ import java.util.stream.Collectors;
 public class ClassRecordingController {
 
     private static final String FALLBACK_VIDEO_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-    private static final URI FALLBACK_VIDEO_URI = URI.create(FALLBACK_VIDEO_URL);
+    private static final java.net.URI FALLBACK_VIDEO_URI = java.net.URI.create(FALLBACK_VIDEO_URL);
 
     private final ClassRecordingService recordingService;
     private final UserRepository userRepository;
     private final BatchRepository batchRepository;
 
-    public ClassRecordingController(ClassRecordingService recordingService, UserRepository userRepository, BatchRepository batchRepository) {
+    public ClassRecordingController(ClassRecordingService recordingService, UserRepository userRepository,
+            BatchRepository batchRepository) {
         this.recordingService = recordingService;
         this.userRepository = userRepository;
         this.batchRepository = batchRepository;
@@ -49,8 +50,7 @@ public class ClassRecordingController {
             @RequestParam(value = "duration", required = false) String duration,
             @RequestParam("course") String course,
             @RequestParam("batch") String batch,
-            @RequestParam(value = "uploadedByEmail", required = false) String paramEmail
-    ) throws IOException {
+            @RequestParam(value = "uploadedByEmail", required = false) String paramEmail) throws IOException {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String currentEmail = auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())
@@ -61,8 +61,8 @@ public class ClassRecordingController {
                 : null;
 
         ClassRecording recording = recordingService.uploadRecording(
-                file, title, description, classDate, duration != null ? duration : "", course, batch, currentEmail, currentRole
-        );
+                file, title, description, classDate, duration != null ? duration : "", course, batch, currentEmail,
+                currentRole);
         return ResponseEntity.ok(recording);
     }
 
@@ -104,7 +104,8 @@ public class ClassRecordingController {
             dto.put("batch", r.getBatch());
             dto.put("fileName", r.getFileName());
             dto.put("filePath", r.getFilePath());
-            String streamUrl = (r.getFileUrl() != null && !r.getFileUrl().isBlank()) ? r.getFileUrl() : ("/api/recordings/stream/" + r.getId());
+            String streamUrl = (r.getFileUrl() != null && !r.getFileUrl().isBlank()) ? r.getFileUrl()
+                    : ("/api/recordings/stream/" + r.getId());
             dto.put("fileUrl", streamUrl);
             dto.put("videoUrl", streamUrl);
             dto.put("fileSize", r.getFileSize());
@@ -146,8 +147,10 @@ public class ClassRecordingController {
             fallback.put("description", "Interactive Live Class Recording & Walkthrough");
             fallback.put("course", "Full Stack Web Development");
             fallback.put("batch", "FSWD - Morning Batch A");
-            fallback.put("fileUrl", FALLBACK_VIDEO_URL);
-            fallback.put("videoUrl", FALLBACK_VIDEO_URL);
+            fallback.put("fileUrl",
+                    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4");
+            fallback.put("videoUrl",
+                    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4");
             return ResponseEntity.ok(fallback);
         }
     }
@@ -155,16 +158,16 @@ public class ClassRecordingController {
     /**
      * Stream Recording with full HTTP Range (byte-range) support.
      * This allows video players to:
-     *  - Start playing immediately without downloading the whole file
-     *  - Seek/jump to any position (e.g. jump to 1:30:00 in a 2-hour video)
-     *  - Resume interrupted streams
-     *  - If local file or DB id is missing, gracefully redirect to public sample video stream instead of 404
+     * - Start playing immediately without downloading the whole file
+     * - Seek/jump to any position (e.g. jump to 1:30:00 in a 2-hour video)
+     * - Resume interrupted streams
+     * - If local file or DB id is missing, gracefully redirect to public sample
+     * video stream instead of 404
      */
     @GetMapping("/stream/{id}")
     public ResponseEntity<?> streamRecording(
             @PathVariable Long id,
-            @RequestHeader(value = "Range", required = false) String rangeHeader
-    ) {
+            @RequestHeader(value = "Range", required = false) String rangeHeader) {
         try {
             ClassRecording recording = null;
             try {
@@ -172,12 +175,14 @@ public class ClassRecordingController {
             } catch (Exception ex) {
                 return ResponseEntity.status(HttpStatus.FOUND)
                         .location(FALLBACK_VIDEO_URI)
+                        .header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                         .build();
             }
 
             if (recording == null) {
                 return ResponseEntity.status(HttpStatus.FOUND)
                         .location(FALLBACK_VIDEO_URI)
+                        .header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                         .build();
             }
 
@@ -185,10 +190,12 @@ public class ClassRecordingController {
             if (filePath == null || !Files.exists(filePath) || Files.size(filePath) <= 10240) {
                 return ResponseEntity.status(HttpStatus.FOUND)
                         .location(FALLBACK_VIDEO_URI)
+                        .header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                         .build();
             }
 
             Resource resource = new UrlResource(filePath.toUri());
+
             String contentType = recording.getFileType();
             MediaType mediaType = MediaType.valueOf("video/mp4");
             if (contentType != null && contentType.contains("/")) {
@@ -202,12 +209,14 @@ public class ClassRecordingController {
             return ResponseEntity.ok()
                     .contentType(mediaType)
                     .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                    .header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + recording.getFileName() + "\"")
                     .body(resource);
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.FOUND)
                     .location(FALLBACK_VIDEO_URI)
+                    .header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                     .build();
         }
     }

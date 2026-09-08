@@ -91,6 +91,16 @@ public class BatchService {
                 }
                 batchMap.put("studentsCount", studentCount);
 
+                String covered = batch.getCoveredTopics();
+                if ((covered == null || covered.isBlank()) && selectCourse != null) {
+                    covered = allCourses.stream()
+                        .filter(c -> c != null && c.getTitle() != null && c.getTitle().equalsIgnoreCase(selectCourse.trim()))
+                        .map(c -> c.getCoveredTopics())
+                        .filter(cv -> cv != null && !cv.isBlank())
+                        .findFirst().orElse("");
+                }
+                batchMap.put("coveredTopics", covered != null ? covered : "");
+
                 return batchMap;
             }).collect(Collectors.toList());
         } catch (Exception e) {
@@ -110,6 +120,9 @@ public class BatchService {
         batch.setClassDays(request.getClassDays());
         batch.setClassTimings(request.getClassTimings());
         batch.setDuration(request.getDuration());
+        if (request.getCoveredTopics() != null) {
+            batch.setCoveredTopics(request.getCoveredTopics());
+        }
         if (request.getGoogleMeetLink() != null) {
             batch.setGoogleMeetLink(request.getGoogleMeetLink());
             // Sync to course
@@ -128,6 +141,24 @@ public class BatchService {
                 .filter(u -> u.getName() != null && u.getName().equalsIgnoreCase(batch.getInstructor()))
                 .map(u -> u.getEmail()).findFirst()
                 .ifPresent(email -> appNotificationService.notifyScheduleUpdated(batch.getBatchName(), schedule, email));
+        }
+        return saved;
+    }
+
+    public Batch updateCoveredTopics(Long id, String coveredTopics) {
+        Batch batch = batchRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Batch not found"));
+        batch.setCoveredTopics(coveredTopics);
+        Batch saved = batchRepository.save(batch);
+
+        // Synchronize to matching Course so all students & admins of this course see it immediately
+        if (batch.getSelectCourse() != null && !batch.getSelectCourse().isBlank()) {
+            courseRepository.findAll().stream()
+                .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(batch.getSelectCourse().trim()))
+                .forEach(c -> {
+                    c.setCoveredTopics(coveredTopics);
+                    courseRepository.save(c);
+                });
         }
         return saved;
     }
