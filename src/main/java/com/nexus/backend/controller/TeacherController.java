@@ -98,6 +98,19 @@ public class TeacherController {
                 })
                 .collect(Collectors.toList());
 
+            if (courseList.isEmpty()) {
+                courseList = courseRepository.findAll().stream()
+                    .map(c -> {
+                        Map<String, Object> m = new HashMap<>();
+                        m.put("id", c.getId());
+                        m.put("title", c.getTitle());
+                        m.put("category", c.getCategory() != null ? c.getCategory() : "");
+                        m.put("syllabusTopics", c.getSyllabusTopics() != null ? c.getSyllabusTopics() : "");
+                        return m;
+                    })
+                    .collect(Collectors.toList());
+            }
+
             // Build batch list filtered by course if provided
             List<Map<String, Object>> batchList = batchRepository.findAll().stream()
                 .filter(b -> b.getInstructor() != null && searchNames.contains(b.getInstructor().toLowerCase().trim()))
@@ -109,6 +122,18 @@ public class TeacherController {
                     m.put("selectCourse", b.getSelectCourse());
                     return m;
                 }).collect(Collectors.toList());
+
+            if (batchList.isEmpty()) {
+                batchList = batchRepository.findAll().stream()
+                    .filter(b -> course == null || course.isBlank() || (b.getSelectCourse() != null && b.getSelectCourse().equalsIgnoreCase(course.trim())))
+                    .map(b -> {
+                        Map<String, Object> m = new HashMap<>();
+                        m.put("id", b.getId());
+                        m.put("batchName", b.getBatchName());
+                        m.put("selectCourse", b.getSelectCourse());
+                        return m;
+                    }).collect(Collectors.toList());
+            }
 
             return ResponseEntity.ok(Map.of(
                 "success", true,
