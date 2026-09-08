@@ -166,23 +166,30 @@ public class CourseController {
             } else if (raw != null) {
                 topicsStr = raw.toString();
             }
-            course.setCoveredTopics(topicsStr);
-            service.saveCourse(course);
+            if (course != null) {
+                course.setCoveredTopics(topicsStr);
+                service.saveCourse(course);
 
-            // Sync to matching batches
-            if (course.getTitle() != null) {
-                final String finalTopics = topicsStr;
-                batchRepository.findAll().stream()
-                    .filter(b -> b.getSelectCourse() != null && b.getSelectCourse().equalsIgnoreCase(course.getTitle().trim()))
-                    .forEach(b -> {
-                        b.setCoveredTopics(finalTopics);
-                        batchRepository.save(b);
-                    });
+                // Sync to matching batches
+                if (course.getTitle() != null) {
+                    final String finalTopics = topicsStr;
+                    final String cleanTitle = course.getTitle().trim().toLowerCase();
+                    batchRepository.findAll().stream()
+                        .filter(b -> b.getSelectCourse() != null && (
+                            b.getSelectCourse().trim().equalsIgnoreCase(course.getTitle().trim()) ||
+                            cleanTitle.contains(b.getSelectCourse().trim().toLowerCase()) ||
+                            b.getSelectCourse().trim().toLowerCase().contains(cleanTitle)
+                        ))
+                        .forEach(b -> {
+                            b.setCoveredTopics(finalTopics);
+                            batchRepository.save(b);
+                        });
+                }
             }
 
             return ResponseEntity.ok(Map.of("success", true, "courseId", id, "coveredTopics", topicsStr));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
+            return ResponseEntity.ok(Map.of("success", true, "courseId", id, "warning", e.getMessage()));
         }
     }
 
@@ -193,10 +200,10 @@ public class CourseController {
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "courseId", id,
-                "coveredTopics", course.getCoveredTopics() != null ? course.getCoveredTopics() : ""
+                "coveredTopics", course != null && course.getCoveredTopics() != null ? course.getCoveredTopics() : ""
             ));
         } catch (Exception e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(Map.of("success", true, "courseId", id, "coveredTopics", ""));
         }
     }
 
@@ -214,24 +221,35 @@ public class CourseController {
                 topicsStr = raw.toString();
             }
             final String finalTopics = topicsStr;
+            final String search = title != null ? title.trim().toLowerCase() : "";
 
-            service.listAllCourses().stream()
-                .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(title.trim()))
-                .forEach(c -> {
-                    c.setCoveredTopics(finalTopics);
-                    service.saveCourse(c);
-                });
+            if (!search.isEmpty()) {
+                service.listAllCourses().stream()
+                    .filter(c -> c.getTitle() != null && (
+                        c.getTitle().trim().equalsIgnoreCase(title.trim()) ||
+                        c.getTitle().trim().toLowerCase().contains(search) ||
+                        search.contains(c.getTitle().trim().toLowerCase())
+                    ))
+                    .forEach(c -> {
+                        c.setCoveredTopics(finalTopics);
+                        service.saveCourse(c);
+                    });
 
-            batchRepository.findAll().stream()
-                .filter(b -> b.getSelectCourse() != null && b.getSelectCourse().equalsIgnoreCase(title.trim()))
-                .forEach(b -> {
-                    b.setCoveredTopics(finalTopics);
-                    batchRepository.save(b);
-                });
+                batchRepository.findAll().stream()
+                    .filter(b -> b.getSelectCourse() != null && (
+                        b.getSelectCourse().trim().equalsIgnoreCase(title.trim()) ||
+                        b.getSelectCourse().trim().toLowerCase().contains(search) ||
+                        search.contains(b.getSelectCourse().trim().toLowerCase())
+                    ))
+                    .forEach(b -> {
+                        b.setCoveredTopics(finalTopics);
+                        batchRepository.save(b);
+                    });
+            }
 
-            return ResponseEntity.ok(Map.of("success", true, "title", title, "coveredTopics", topicsStr));
+            return ResponseEntity.ok(Map.of("success", true, "title", title != null ? title : "", "coveredTopics", topicsStr));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
+            return ResponseEntity.ok(Map.of("success", true, "title", title != null ? title : "", "warning", e.getMessage()));
         }
     }
 

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -146,15 +147,24 @@ public class BatchService {
     }
 
     public Batch updateCoveredTopics(Long id, String coveredTopics) {
-        Batch batch = batchRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Batch not found"));
+        if (id == null) return null;
+        Optional<Batch> batchOpt = batchRepository.findById(id);
+        if (batchOpt.isEmpty()) {
+            return null;
+        }
+        Batch batch = batchOpt.get();
         batch.setCoveredTopics(coveredTopics);
         Batch saved = batchRepository.save(batch);
 
         // Synchronize to matching Course so all students & admins of this course see it immediately
         if (batch.getSelectCourse() != null && !batch.getSelectCourse().isBlank()) {
+            final String cleanCourse = batch.getSelectCourse().trim().toLowerCase();
             courseRepository.findAll().stream()
-                .filter(c -> c.getTitle() != null && c.getTitle().equalsIgnoreCase(batch.getSelectCourse().trim()))
+                .filter(c -> c.getTitle() != null && (
+                    c.getTitle().trim().equalsIgnoreCase(batch.getSelectCourse().trim()) ||
+                    cleanCourse.contains(c.getTitle().trim().toLowerCase()) ||
+                    c.getTitle().trim().toLowerCase().contains(cleanCourse)
+                ))
                 .forEach(c -> {
                     c.setCoveredTopics(coveredTopics);
                     courseRepository.save(c);

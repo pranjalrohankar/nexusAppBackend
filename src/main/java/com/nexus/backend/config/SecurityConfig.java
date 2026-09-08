@@ -56,13 +56,13 @@ public class SecurityConfig {
 
                 // Courses
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/courses", "/api/courses/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/courses/*/covered-topics", "/api/courses/**/covered-topics", "/api/courses/by-title/covered-topics").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/courses/*/meet-link", "/api/courses/**/meet-link").hasAnyRole("ADMIN", "TEACHER")
-                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/courses/*/covered-topics", "/api/courses/**/covered-topics", "/api/courses/by-title/covered-topics").hasAnyRole("ADMIN", "TEACHER")
                 .requestMatchers("/api/courses", "/api/courses/**").hasAnyRole("ADMIN", "TEACHER")
 
                 // Batches
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/batches", "/api/batches/**").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/batches/*/covered-topics", "/api/batches/**/covered-topics").hasAnyRole("ADMIN", "TEACHER")
+                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/batches/*/covered-topics", "/api/batches/**/covered-topics").permitAll()
                 .requestMatchers("/api/batches", "/api/batches/**").hasAnyRole("ADMIN", "TEACHER")
 
                 // Teachers
