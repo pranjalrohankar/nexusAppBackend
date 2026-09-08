@@ -45,7 +45,9 @@ public class AuthService {
         User user = null;
 
         try {
-            user = userRepository.findByEmail(request.getEmail())
+            String email = request.getEmail() != null ? request.getEmail().trim() : "";
+            user = userRepository.findByEmailIgnoreCase(email)
+                    .or(() -> userRepository.findByEmail(email))
                     .orElseThrow(() -> new RuntimeException("Invalid ID or Password"));
 
             if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
@@ -53,7 +55,7 @@ public class AuthService {
                 throw new RuntimeException("Invalid ID or Password");
             }
 
-            failedAttempts.remove(request.getEmail());
+            failedAttempts.remove(user.getEmail());
 
             LocalDateTime now = LocalDateTime.now();
             user.setLastLogin(now);

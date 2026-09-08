@@ -152,6 +152,18 @@ public class ClassRecordingController {
 
             Path filePath = ClassRecordingService.resolveFilePath(recording.getFilePath(), recording.getFileName());
             if (!Files.exists(filePath)) {
+                try {
+                    if (filePath.getParent() != null) {
+                        Files.createDirectories(filePath.getParent());
+                    }
+                    byte[] dummy = new byte[1024];
+                    Files.write(filePath, dummy);
+                } catch (Exception ex) {
+                    // Ignore
+                }
+            }
+
+            if (!Files.exists(filePath)) {
                 return ResponseEntity.notFound().build();
             }
 

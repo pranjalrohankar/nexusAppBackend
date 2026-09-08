@@ -2,16 +2,8 @@ package com.nexus.backend;
 
 import com.nexus.backend.enums.BatchStatus;
 import com.nexus.backend.enums.ClassDay;
-import com.nexus.backend.model.Batch;
-import com.nexus.backend.model.Course;
-import com.nexus.backend.model.Test;
-import com.nexus.backend.model.ClassRecording;
-import com.nexus.backend.model.User;
-import com.nexus.backend.repository.BatchRepository;
-import com.nexus.backend.repository.CourseRepository;
-import com.nexus.backend.repository.TestRepository;
-import com.nexus.backend.repository.ClassRecordingRepository;
-import com.nexus.backend.repository.UserRepository;
+import com.nexus.backend.model.*;
+import com.nexus.backend.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -22,6 +14,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,29 +32,99 @@ public class NexusBackendApplication {
     }
 
     @Bean
-    CommandLineRunner seedAdmin(UserRepository userRepository,
-                                CourseRepository courseRepository,
-                                BatchRepository batchRepository,
-                                TestRepository testRepository,
-                                ClassRecordingRepository recordingRepository,
-                                PasswordEncoder passwordEncoder) {
+    CommandLineRunner seedData(UserRepository userRepository,
+                               TeacherRepository teacherRepository,
+                               StudentRepository studentRepository,
+                               EnrollmentRepository enrollmentRepository,
+                               CourseRepository courseRepository,
+                               BatchRepository batchRepository,
+                               TestRepository testRepository,
+                               ClassRecordingRepository recordingRepository,
+                               StudyMaterialRepository materialRepository,
+                               PasswordEncoder passwordEncoder) {
         return args -> {
             try {
-                if (!userRepository.existsByEmail("admin@nexus.com")) {
+                // Ensure upload directories exist
+                Path matDir = Paths.get("uploads", "materials");
+                Files.createDirectories(matDir);
+                Path recDir = Paths.get("uploads", "recordings");
+                Files.createDirectories(recDir);
+
+                // 1. Seed Admin User
+                if (userRepository.findByEmailIgnoreCase("admin@nexus.com").isEmpty()) {
                     User admin = new User();
                     admin.setName("Admin");
                     admin.setEmail("admin@nexus.com");
                     admin.setPassword(passwordEncoder.encode("admin123"));
                     admin.setRole(User.Role.ADMIN);
+                    admin.setPhone("+91 98765 00000");
                     userRepository.save(admin);
                     log.info("Admin user seeded successfully");
                 }
 
+                // 2. Seed Demo Teacher User & Teacher Profile
+                User teacherUser = userRepository.findByEmailIgnoreCase("teacher@nexus.com").orElse(null);
+                if (teacherUser == null) {
+                    teacherUser = new User();
+                    teacherUser.setName("Rajesh Kumar");
+                    teacherUser.setEmail("teacher@nexus.com");
+                    teacherUser.setPassword(passwordEncoder.encode("teacher123"));
+                    teacherUser.setRole(User.Role.TEACHER);
+                    teacherUser.setPhone("+91 98765 43210");
+                    teacherUser = userRepository.save(teacherUser);
+                    log.info("Teacher user seeded successfully");
+                }
+                if (teacherRepository.findByUser(teacherUser).isEmpty()) {
+                    Teacher teacher = new Teacher();
+                    teacher.setUser(teacherUser);
+                    teacher.setName("Rajesh Kumar");
+                    teacher.setEmail("teacher@nexus.com");
+                    teacher.setPhone("+91 98765 43210");
+                    teacher.setSpecialization("Full Stack Web Development");
+                    teacher.setQualification("M.Tech in CS");
+                    teacher.setExperience("8+ Years");
+                    teacher.setEmploymentType("Full-Time");
+                    teacher.setCity("Mumbai");
+                    teacher.setState("Maharashtra");
+                    teacher.setJoinDate("2024-01-15");
+                    teacherRepository.save(teacher);
+                    log.info("Teacher profile seeded successfully");
+                }
+
+                // 3. Seed Demo Student User & Student Profile
+                User studentUser = userRepository.findByEmailIgnoreCase("student@nexus.com").orElse(null);
+                if (studentUser == null) {
+                    studentUser = new User();
+                    studentUser.setName("Pratham Mali");
+                    studentUser.setEmail("student@nexus.com");
+                    studentUser.setPassword(passwordEncoder.encode("student123"));
+                    studentUser.setRole(User.Role.STUDENT);
+                    studentUser.setPhone("+91 98765 43211");
+                    studentUser = userRepository.save(studentUser);
+                    log.info("Student user seeded successfully");
+                }
+                Student student = studentRepository.findByUser(studentUser).orElse(null);
+                if (student == null) {
+                    student = new Student();
+                    student.setUser(studentUser);
+                    student.setName("Pratham Mali");
+                    student.setEmail("student@nexus.com");
+                    student.setPhone("+91 98765 43211");
+                    student.setCourse("Full Stack Web Development");
+                    student.setEnrollmentDate("2026-06-01");
+                    student.setPaymentStatus("PAID");
+                    student.setCity("Pune");
+                    student.setState("Maharashtra");
+                    student = studentRepository.save(student);
+                    log.info("Student profile seeded successfully");
+                }
+
+                // 4. Seed Courses
                 if (courseRepository.count() == 0) {
                     Course c1 = Course.builder()
                         .title("Full Stack Web Development")
                         .category("Development")
-                        .description("Master MERN stack development from scratch.")
+                        .description("Master MERN stack development, modern JavaScript, and real-time cloud architectures.")
                         .duration("3 Months")
                         .instructor("Rajesh Kumar")
                         .classTimings("08:00 AM - 10:00 AM")
@@ -67,12 +132,15 @@ public class NexusBackendApplication {
                         .googleMeetLink("https://meet.google.com/miq-hydh-kkf")
                         .price(new BigDecimal("499.00"))
                         .status(Course.Status.ACTIVE)
+                        .totalSessions(36)
+                        .syllabusTopics("HTML5 & CSS3, JavaScript ES6+, React 19, Node.js & Express, MongoDB, RESTful APIs, DevOps Deployment")
+                        .whatYouWillLearn("Full stack architectures, production React patterns, authentication, CI/CD, responsive web apps")
                         .build();
 
                     Course c2 = Course.builder()
                         .title("Java Full Stack Development")
                         .category("Development")
-                        .description("Learn Spring Boot, Hibernate and Angular/React.")
+                        .description("Learn Java 21, Spring Boot 3, Hibernate JPA, microservices, and React integration.")
                         .duration("3.5 Months")
                         .instructor("Amit Patel")
                         .classTimings("06:00 PM - 08:00 PM")
@@ -80,12 +148,15 @@ public class NexusBackendApplication {
                         .googleMeetLink("https://meet.google.com/miq-hydh-kkf")
                         .price(new BigDecimal("599.00"))
                         .status(Course.Status.ACTIVE)
+                        .totalSessions(42)
+                        .syllabusTopics("Core Java, Spring Boot 3, Spring Data JPA, Microservices, Docker, React Frontend")
+                        .whatYouWillLearn("Enterprise Java backend, secure APIs, relational database design, cloud deployment")
                         .build();
 
                     Course c3 = Course.builder()
                         .title("Data Science & Machine Learning")
                         .category("Data Science")
-                        .description("Python, Pandas, ML algorithms and deep learning.")
+                        .description("Python, Pandas, ML algorithms, data pipelines, and predictive analytics.")
                         .duration("4 Months")
                         .instructor("Priya Sharma")
                         .classTimings("10:00 AM - 12:00 PM")
@@ -93,12 +164,15 @@ public class NexusBackendApplication {
                         .googleMeetLink("https://meet.google.com/miq-hydh-kkf")
                         .price(new BigDecimal("699.00"))
                         .status(Course.Status.ACTIVE)
+                        .totalSessions(48)
+                        .syllabusTopics("Python, NumPy, Pandas, Scikit-learn, Supervised Learning, Deep Learning basics")
+                        .whatYouWillLearn("Statistical analysis, machine learning pipelines, visualization, model deployment")
                         .build();
 
                     Course c4 = Course.builder()
                         .title("UI/UX Design Mastery")
                         .category("Design")
-                        .description("Figma, user research, wireframing and prototyping.")
+                        .description("Figma design systems, UX research, wireframing, interactive prototyping, and design tokens.")
                         .duration("3 Months")
                         .instructor("Karan Malhotra")
                         .classTimings("02:00 PM - 05:00 PM")
@@ -106,12 +180,16 @@ public class NexusBackendApplication {
                         .googleMeetLink("https://meet.google.com/miq-hydh-kkf")
                         .price(new BigDecimal("399.00"))
                         .status(Course.Status.ACTIVE)
+                        .totalSessions(24)
+                        .syllabusTopics("Design Thinking, Figma Advanced, Wireframing, Prototyping, Usability Testing, Portfolio Building")
+                        .whatYouWillLearn("Design systems, micro-interactions, responsive UX, client presentations")
                         .build();
 
                     courseRepository.saveAll(List.of(c1, c2, c3, c4));
                     log.info("Default courses seeded successfully");
                 }
 
+                // 5. Seed Batches
                 if (batchRepository.count() == 0) {
                     Batch b1 = new Batch();
                     b1.setBatchName("FSWD - Morning Batch A");
@@ -165,6 +243,27 @@ public class NexusBackendApplication {
                     log.info("Default batches seeded successfully");
                 }
 
+                // 6. Ensure Student Enrollments
+                if (student != null) {
+                    if (!enrollmentRepository.existsByStudentAndCourseTitle(student, "Full Stack Web Development")) {
+                        Enrollment e1 = new Enrollment();
+                        e1.setStudent(student);
+                        e1.setCourseTitle("Full Stack Web Development");
+                        e1.setEnrollmentDate("2026-06-01");
+                        e1.setPaymentStatus("PAID");
+                        enrollmentRepository.save(e1);
+                    }
+                    if (!enrollmentRepository.existsByStudentAndCourseTitle(student, "Java Full Stack Development")) {
+                        Enrollment e2 = new Enrollment();
+                        e2.setStudent(student);
+                        e2.setCourseTitle("Java Full Stack Development");
+                        e2.setEnrollmentDate("2026-06-15");
+                        e2.setPaymentStatus("PAID");
+                        enrollmentRepository.save(e2);
+                    }
+                }
+
+                // 7. Seed Tests & Assessments
                 if (testRepository.count() == 0) {
                     Test t1 = Test.builder()
                         .testName("JavaScript ES6+ Assessment")
@@ -207,7 +306,7 @@ public class NexusBackendApplication {
                         .questionsCount(5)
                         .createdByTeacherEmail("admin@nexus.com")
                         .createdByName("Karan Malhotra")
-                        .questionsJson("[{\"question\":\"What is Fitts's Law primarily used for in UI design?\",\"options\":[\"Modeling target acquisition time based on distance & size\",\"Color contrast calculation\",\"Typography sizing\",\"CSS animation speed\"],\"correctOption\":0},{\"question\":\"What does Hick's Law state?\",\"options\":[\"Time to decide increases with number and complexity of choices\",\"Bigger buttons are always better\",\"Contrast should exceed 4.5:1\",\"Navigation must be at top\"],\"correctOption\":0},{\"question\":\"What is a wireframe?\",\"options\":[\"A basic visual guide of UI layout without full styling\",\"Final production code\",\"Color palette guide\",\"Vector logo\"],\"correctOption\":0},{\"question\":\"Which UX metric measures task completion ease?\",\"options\":[\"Single Ease Question (SEQ) / SUS\",\"Page views\",\"Bounce rate\",\"FPS\"],\"correctOption\":0},{\"question\":\"What is the purpose of user personas?\",\"options\":[\"Representarchetypal users to guide design decisions\",\"Marketing logos\",\"Sales tracking\",\"Code documentation\"],\"correctOption\":0}]")
+                        .questionsJson("[{\"question\":\"What is Fitts's Law primarily used for in UI design?\",\"options\":[\"Modeling target acquisition time based on distance & size\",\"Color contrast calculation\",\"Typography sizing\",\"CSS animation speed\"],\"correctOption\":0},{\"question\":\"What does Hick's Law state?\",\"options\":[\"Time to decide increases with number and complexity of choices\",\"Bigger buttons are always better\",\"Contrast should exceed 4.5:1\",\"Navigation must be at top\"],\"correctOption\":0},{\"question\":\"What is a wireframe?\",\"options\":[\"A basic visual guide of UI layout without full styling\",\"Final production code\",\"Color palette guide\",\"Vector logo\"],\"correctOption\":0},{\"question\":\"Which UX metric measures task completion ease?\",\"options\":[\"Single Ease Question (SEQ) / SUS\",\"Page views\",\"Bounce rate\",\"FPS\"],\"correctOption\":0},{\"question\":\"What is the purpose of user personas?\",\"options\":[\"Represent archetypal users to guide design decisions\",\"Marketing logos\",\"Sales tracking\",\"Code documentation\"],\"correctOption\":0}]")
                         .createdAt(LocalDateTime.now())
                         .build();
 
@@ -245,7 +344,14 @@ public class NexusBackendApplication {
                     log.info("Default tests seeded successfully");
                 }
 
+                // 8. Seed Class Recordings
                 if (recordingRepository.count() == 0) {
+                    Path rec1Path = recDir.resolve("orientation_fullstack.mp4");
+                    if (!Files.exists(rec1Path)) Files.write(rec1Path, new byte[1024]);
+
+                    Path rec2Path = recDir.resolve("spring_boot_arch.mp4");
+                    if (!Files.exists(rec2Path)) Files.write(rec2Path, new byte[1024]);
+
                     ClassRecording r1 = new ClassRecording();
                     r1.setTitle("Orientation & Full Stack Roadmap 2026");
                     r1.setDescription("Introduction to full stack web development architectures, toolchains, and project expectations.");
@@ -256,9 +362,9 @@ public class NexusBackendApplication {
                     r1.setFileName("orientation_fullstack.mp4");
                     r1.setFilePath("uploads/recordings/orientation_fullstack.mp4");
                     r1.setFileType("video/mp4");
-                    r1.setUploadedByEmail("admin@nexus.com");
-                    r1.setUploadedByRole("ADMIN");
-                    r1.setUploadedAt(LocalDateTime.now());
+                    r1.setUploadedByEmail("teacher@nexus.com");
+                    r1.setUploadedByRole("TEACHER");
+                    r1.setUploadedAt(LocalDateTime.now().minusDays(3));
                     ClassRecording s1 = recordingRepository.save(r1);
                     s1.setFileUrl("/api/recordings/stream/" + s1.getId());
                     recordingRepository.save(s1);
@@ -273,14 +379,82 @@ public class NexusBackendApplication {
                     r2.setFileName("spring_boot_arch.mp4");
                     r2.setFilePath("uploads/recordings/spring_boot_arch.mp4");
                     r2.setFileType("video/mp4");
-                    r2.setUploadedByEmail("admin@nexus.com");
-                    r2.setUploadedByRole("ADMIN");
-                    r2.setUploadedAt(LocalDateTime.now());
+                    r2.setUploadedByEmail("teacher@nexus.com");
+                    r2.setUploadedByRole("TEACHER");
+                    r2.setUploadedAt(LocalDateTime.now().minusDays(1));
                     ClassRecording s2 = recordingRepository.save(r2);
                     s2.setFileUrl("/api/recordings/stream/" + s2.getId());
                     recordingRepository.save(s2);
 
                     log.info("Default class recordings seeded successfully");
+                }
+
+                // 9. Seed Study Materials
+                if (materialRepository.count() == 0) {
+                    Path mat1Path = matDir.resolve("javascript_es6_notes.pdf");
+                    if (!Files.exists(mat1Path)) {
+                        Files.writeString(mat1Path, "JavaScript ES6+ Deep Dive and Notes\nNexus LMS");
+                    }
+                    StudyMaterial m1 = new StudyMaterial();
+                    m1.setTitle("JavaScript ES6+ Complete Cheat Sheet & Notes");
+                    m1.setDescription("Complete reference for ES6+ syntax, closures, promises, async/await, and event loops.");
+                    m1.setCourse("Full Stack Web Development");
+                    m1.setBatch("FSWD - Morning Batch A");
+                    m1.setModuleName("Module 1: Modern JavaScript");
+                    m1.setTopic("ES6 Syntax & Async Programming");
+                    m1.setFileName("javascript_es6_notes.pdf");
+                    m1.setFilePath("uploads/materials/javascript_es6_notes.pdf");
+                    m1.setFileType("application/pdf");
+                    m1.setUploadedByEmail("teacher@nexus.com");
+                    m1.setUploadedByRole("TEACHER");
+                    m1.setUploadedAt(LocalDateTime.now().minusDays(5));
+                    StudyMaterial sm1 = materialRepository.save(m1);
+                    sm1.setFileUrl("/api/materials/download/" + sm1.getId());
+                    materialRepository.save(sm1);
+
+                    Path mat2Path = matDir.resolve("react_architecture_guide.pdf");
+                    if (!Files.exists(mat2Path)) {
+                        Files.writeString(mat2Path, "React 19 Architecture Guide\nNexus LMS");
+                    }
+                    StudyMaterial m2 = new StudyMaterial();
+                    m2.setTitle("React 19 & Architecture Design Guide");
+                    m2.setDescription("Best practices for React components, custom hooks, context, and state management.");
+                    m2.setCourse("Full Stack Web Development");
+                    m2.setBatch("FSWD - Morning Batch A");
+                    m2.setModuleName("Module 2: React Core & Patterns");
+                    m2.setTopic("Hooks & Component Design");
+                    m2.setFileName("react_architecture_guide.pdf");
+                    m2.setFilePath("uploads/materials/react_architecture_guide.pdf");
+                    m2.setFileType("application/pdf");
+                    m2.setUploadedByEmail("teacher@nexus.com");
+                    m2.setUploadedByRole("TEACHER");
+                    m2.setUploadedAt(LocalDateTime.now().minusDays(2));
+                    StudyMaterial sm2 = materialRepository.save(m2);
+                    sm2.setFileUrl("/api/materials/download/" + sm2.getId());
+                    materialRepository.save(sm2);
+
+                    Path mat3Path = matDir.resolve("spring_boot_handbook.pdf");
+                    if (!Files.exists(mat3Path)) {
+                        Files.writeString(mat3Path, "Spring Boot 3 Handbook\nNexus LMS");
+                    }
+                    StudyMaterial m3 = new StudyMaterial();
+                    m3.setTitle("Spring Boot 3 & Microservices Handbook");
+                    m3.setDescription("Hands-on guide to building production-grade REST APIs, security, and Hibernate ORM.");
+                    m3.setCourse("Java Full Stack Development");
+                    m3.setBatch("Java Full Stack - Evening Batch");
+                    m3.setModuleName("Module 1: Spring Core & JPA");
+                    m3.setTopic("REST APIs & ORM Persistence");
+                    m3.setFileName("spring_boot_handbook.pdf");
+                    m3.setFilePath("uploads/materials/spring_boot_handbook.pdf");
+                    m3.setFileType("application/pdf");
+                    m3.setUploadedByEmail("admin@nexus.com");
+                    m3.setUploadedByRole("ADMIN");
+                    m3.setUploadedAt(LocalDateTime.now().minusDays(4));
+                    StudyMaterial sm3 = materialRepository.save(m3);
+                    sm3.setFileUrl("/api/materials/download/" + sm3.getId());
+                    materialRepository.save(sm3);
+
+                    log.info("Default study materials seeded successfully");
                 }
             } catch (Exception e) {
                 log.warn("Seed skipped: {}", e.getMessage());
@@ -288,3 +462,4 @@ public class NexusBackendApplication {
         };
     }
 }
+
