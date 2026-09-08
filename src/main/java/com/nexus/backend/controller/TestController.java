@@ -14,8 +14,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/tests")
@@ -115,6 +117,30 @@ public class TestController {
         return ResponseEntity.status(404).body(ApiResponse.error("Test not found"));
     }
 
+    private Map<String, Object> toSubmissionDto(TestAttempt sub) {
+        if (sub == null) return new HashMap<>();
+        Map<String, Object> dto = new HashMap<>();
+        dto.put("id", sub.getId());
+        dto.put("testId", sub.getTestId());
+        dto.put("studentId", sub.getStudentId());
+        dto.put("testTitle", sub.getTestTitle() != null ? sub.getTestTitle() : "Assessment");
+        dto.put("studentName", sub.getStudentName() != null ? sub.getStudentName() : "Student");
+        dto.put("studentEmail", sub.getStudentEmail() != null ? sub.getStudentEmail() : "");
+        dto.put("marksObtained", sub.getMarksObtained());
+        dto.put("obtainedMarks", sub.getMarksObtained());
+        dto.put("totalMarks", sub.getTotalMarks() != null ? sub.getTotalMarks() : 100);
+        dto.put("status", sub.getStatus() != null ? sub.getStatus() : "PENDING");
+        dto.put("answersJson", sub.getAnswersJson());
+        dto.put("answersText", sub.getAnswersText());
+        dto.put("solutionFileName", sub.getSolutionFileName());
+        dto.put("solutionFileUri", sub.getSolutionFileUri());
+        dto.put("feedback", sub.getFeedback());
+        dto.put("attemptDate", sub.getAttemptDate());
+        dto.put("attemptTime", sub.getAttemptTime());
+        dto.put("submittedAt", sub.getSubmittedAt() != null ? sub.getSubmittedAt().toString() : "");
+        return dto;
+    }
+
     /**
      * POST /api/tests/submit - Submit test attempt / assessment answers
      */
@@ -126,7 +152,7 @@ public class TestController {
             String name = user != null ? user.getName() : request.getStudentName();
 
             TestAttempt attempt = testAttemptService.submitAttempt(request, email, name);
-            return ResponseEntity.ok(ApiResponse.ok("Test submitted successfully", attempt));
+            return ResponseEntity.ok(ApiResponse.ok("Test submitted successfully", toSubmissionDto(attempt)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -138,7 +164,10 @@ public class TestController {
     @GetMapping("/submissions")
     public ResponseEntity<ApiResponse<?>> getSubmissions(@RequestParam(required = false) String status) {
         List<TestAttempt> submissions = testAttemptService.getSubmissions(status);
-        return ResponseEntity.ok(ApiResponse.ok("Submissions fetched", submissions));
+        List<Map<String, Object>> dtoList = submissions.stream()
+                .map(this::toSubmissionDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.ok("Submissions fetched", dtoList));
     }
 
     /**
@@ -146,12 +175,17 @@ public class TestController {
      */
     @GetMapping("/submissions/my")
     public ResponseEntity<ApiResponse<?>> getMySubmissions() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         User user = getCurrentUser();
-        if (user == null) {
+        String email = user != null ? user.getEmail() : (auth != null ? auth.getName() : null);
+        if (email == null || email.isBlank() || "anonymousUser".equalsIgnoreCase(email)) {
             return ResponseEntity.status(401).body(ApiResponse.error("Unauthorized"));
         }
-        List<TestAttempt> list = testAttemptService.getAttemptsByStudentEmail(user.getEmail());
-        return ResponseEntity.ok(ApiResponse.ok("My submissions fetched", list));
+        List<TestAttempt> list = testAttemptService.getAttemptsByStudentEmail(email);
+        List<Map<String, Object>> dtoList = list.stream()
+                .map(this::toSubmissionDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.ok("My submissions fetched", dtoList));
     }
 
     /**
@@ -167,7 +201,7 @@ public class TestController {
 
         var opt = testAttemptService.gradeSubmission(id, marks, feedback, status);
         if (opt.isPresent()) {
-            return ResponseEntity.ok(ApiResponse.ok("Submission graded successfully", opt.get()));
+            return ResponseEntity.ok(ApiResponse.ok("Submission graded successfully", toSubmissionDto(opt.get())));
         }
         return ResponseEntity.status(404).body(ApiResponse.error("Submission not found"));
     }

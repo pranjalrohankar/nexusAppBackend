@@ -1,5 +1,6 @@
 package com.nexus.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,13 +21,35 @@ public class TestAttempt {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id")
     private Student student;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "test_id")
     private Test test;
+
+    @JsonIgnore
+    @Transient
+    public Long getStudentId() {
+        try {
+            return student != null ? student.getId() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @JsonIgnore
+    @Transient
+    public Long getTestId() {
+        try {
+            return test != null ? test.getId() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     @Column(name = "test_title")
     private String testTitle;

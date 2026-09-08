@@ -5,15 +5,17 @@ import com.nexus.backend.repository.BatchRepository;
 import com.nexus.backend.repository.UserRepository;
 import com.nexus.backend.service.ClassRecordingService;
 
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
-import java.io.*;
+import java.io.IOException;
+import java.net.URI;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.util.*;
@@ -24,7 +26,8 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "*")
 public class ClassRecordingController {
 
-    private static final int CHUNK_SIZE = 1024 * 1024; // 1 MB chunks
+    private static final String FALLBACK_VIDEO_URL = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+    private static final URI FALLBACK_VIDEO_URI = URI.create(FALLBACK_VIDEO_URL);
 
     private final ClassRecordingService recordingService;
     private final UserRepository userRepository;
@@ -143,8 +146,8 @@ public class ClassRecordingController {
             fallback.put("description", "Interactive Live Class Recording & Walkthrough");
             fallback.put("course", "Full Stack Web Development");
             fallback.put("batch", "FSWD - Morning Batch A");
-            fallback.put("fileUrl", "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4");
-            fallback.put("videoUrl", "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4");
+            fallback.put("fileUrl", FALLBACK_VIDEO_URL);
+            fallback.put("videoUrl", FALLBACK_VIDEO_URL);
             return ResponseEntity.ok(fallback);
         }
     }
@@ -167,90 +170,44 @@ public class ClassRecordingController {
             try {
                 recording = recordingService.getRecordingById(id);
             } catch (Exception ex) {
-                // Not found in DB -> redirect to public sample video
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .header(HttpHeaders.LOCATION, "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+                        .location(FALLBACK_VIDEO_URI)
                         .build();
             }
 
             if (recording == null) {
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .header(HttpHeaders.LOCATION, "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+                        .location(FALLBACK_VIDEO_URI)
                         .build();
             }
 
             Path filePath = ClassRecordingService.resolveFilePath(recording.getFilePath(), recording.getFileName());
-            // If the local file doesn't exist or is a dummy placeholder (< 10KB), redirect to public sample video stream
-            if (!Files.exists(filePath) || Files.size(filePath) <= 10240) {
+            if (filePath == null || !Files.exists(filePath) || Files.size(filePath) <= 10240) {
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .header(HttpHeaders.LOCATION, "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+                        .location(FALLBACK_VIDEO_URI)
                         .build();
             }
 
-            long fileSize = Files.size(filePath);
-            String contentType = recording.getFileType() != null ? recording.getFileType() : "video/mp4";
-
-            // No Range header — send full file (still streamed, not loaded into RAM)
-            if (rangeHeader == null || rangeHeader.isEmpty()) {
-                StreamingResponseBody body = out -> {
-                    try (InputStream in = Files.newInputStream(filePath)) {
-                        byte[] buf = new byte[CHUNK_SIZE];
-                        int read;
-                        while ((read = in.read(buf)) != -1) {
-                            out.write(buf, 0, read);
-                            out.flush();
-                        }
-                    }
-                };
-                return ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_TYPE, contentType)
-                        .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                        .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(fileSize))
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + recording.getFileName() + "\"")
-                        .body(body);
+            Resource resource = new UrlResource(filePath.toUri());
+            String contentType = recording.getFileType();
+            MediaType mediaType = MediaType.valueOf("video/mp4");
+            if (contentType != null && contentType.contains("/")) {
+                try {
+                    mediaType = MediaType.parseMediaType(contentType);
+                } catch (Exception ignored) {
+                    mediaType = MediaType.valueOf("video/mp4");
+                }
             }
 
-            // Parse Range header: "bytes=start-end"
-            String rangeValue = rangeHeader.replace("bytes=", "");
-            String[] parts = rangeValue.split("-");
-            long start = Long.parseLong(parts[0].trim());
-            long end = parts.length > 1 && !parts[1].trim().isEmpty()
-                    ? Long.parseLong(parts[1].trim())
-                    : Math.min(start + CHUNK_SIZE - 1, fileSize - 1);
-
-            // Clamp to file bounds
-            end = Math.min(end, fileSize - 1);
-            long contentLength = end - start + 1;
-
-            final long rangeStart = start;
-            final long rangeEnd = end;
-
-            StreamingResponseBody body = out -> {
-                try (InputStream in = Files.newInputStream(filePath)) {
-                    long skipped = in.skip(rangeStart);
-                    if (skipped < rangeStart) return;
-                    byte[] buf = new byte[CHUNK_SIZE];
-                    long remaining = rangeEnd - rangeStart + 1;
-                    int read;
-                    while (remaining > 0 && (read = in.read(buf, 0, (int) Math.min(buf.length, remaining))) != -1) {
-                        out.write(buf, 0, read);
-                        out.flush();
-                        remaining -= read;
-                    }
-                }
-            };
-
-            return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
-                    .header(HttpHeaders.CONTENT_TYPE, contentType)
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
                     .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(contentLength))
-                    .header(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + end + "/" + fileSize)
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + recording.getFileName() + "\"")
-                    .body(body);
+                    .body(resource);
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.FOUND)
-                    .header(HttpHeaders.LOCATION, "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4")
+                    .location(FALLBACK_VIDEO_URI)
                     .build();
         }
     }
