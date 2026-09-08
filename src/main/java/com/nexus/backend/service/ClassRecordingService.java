@@ -92,12 +92,7 @@ public class ClassRecordingService {
     }
 
     public List<ClassRecording> getAllRecordings(String currentEmail, String currentRole) {
-        List<ClassRecording> recordings = repository.findAll();
-        if (currentEmail == null || currentEmail.isBlank()) return recordings;
-        if ("ADMIN".equalsIgnoreCase(currentRole)) return recordings;
-        return recordings.stream()
-                .filter(r -> r.getUploadedByEmail() == null || currentEmail.equalsIgnoreCase(r.getUploadedByEmail()))
-                .toList();
+        return repository.findAll();
     }
 
     public ClassRecording getRecordingById(Long id) {
