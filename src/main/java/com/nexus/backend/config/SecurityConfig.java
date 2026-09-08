@@ -32,6 +32,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/health").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/batches").authenticated()
@@ -56,8 +57,13 @@ public class SecurityConfig {
                 .requestMatchers("/api/enrollments/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers("/api/notifications/**").hasAnyRole("TEACHER", "ADMIN", "STUDENT")
                 .requestMatchers("/api/users/**").authenticated()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/tests", "/api/tests/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/tests/submit").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/tests").hasAnyRole("ADMIN", "TEACHER")
+                .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/tests/**").hasAnyRole("ADMIN", "TEACHER")
+                .requestMatchers("/api/tests/submissions/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers("/api/tests/**").authenticated()
-                .requestMatchers("/api/test-attempts/**").authenticated()
+                .requestMatchers("/api/test-attempts/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
 
                 .anyRequest().authenticated()
             )

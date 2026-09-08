@@ -9,7 +9,7 @@ RUN chmod +x ./mvnw && ./mvnw dependency:go-offline -B
 
 # Copy source code and build jar
 COPY src ./src
-RUN ./mvnw clean package -DskipTests -B
+RUN ./mvnw clean package -DskipTests -B && cp target/nexus-app-backend-*.jar app.jar
 
 # Production Runtime stage
 FROM eclipse-temurin:21-jre-alpine
@@ -20,9 +20,9 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
 # Copy jar from builder
-COPY --from=builder /build/target/*.jar app.jar
+COPY --from=builder /build/app.jar app.jar
 
 ENV PORT=8080
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:+UseG1GC", "-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1", "-Xms128m", "-Xmx384m", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]

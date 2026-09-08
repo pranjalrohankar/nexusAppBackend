@@ -4,9 +4,13 @@ import com.nexus.backend.enums.BatchStatus;
 import com.nexus.backend.enums.ClassDay;
 import com.nexus.backend.model.Batch;
 import com.nexus.backend.model.Course;
+import com.nexus.backend.model.Test;
+import com.nexus.backend.model.ClassRecording;
 import com.nexus.backend.model.User;
 import com.nexus.backend.repository.BatchRepository;
 import com.nexus.backend.repository.CourseRepository;
+import com.nexus.backend.repository.TestRepository;
+import com.nexus.backend.repository.ClassRecordingRepository;
 import com.nexus.backend.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @SpringBootApplication
@@ -35,6 +40,8 @@ public class NexusBackendApplication {
     CommandLineRunner seedAdmin(UserRepository userRepository,
                                 CourseRepository courseRepository,
                                 BatchRepository batchRepository,
+                                TestRepository testRepository,
+                                ClassRecordingRepository recordingRepository,
                                 PasswordEncoder passwordEncoder) {
         return args -> {
             try {
@@ -156,6 +163,124 @@ public class NexusBackendApplication {
 
                     batchRepository.saveAll(List.of(b1, b2, b3, b4));
                     log.info("Default batches seeded successfully");
+                }
+
+                if (testRepository.count() == 0) {
+                    Test t1 = Test.builder()
+                        .testName("JavaScript ES6+ Assessment")
+                        .courseTitle("Full Stack Web Development")
+                        .category("Full Stack Development")
+                        .duration("35 mins")
+                        .passScore("70%")
+                        .totalMarks(100)
+                        .testType("MCQ")
+                        .questionsCount(5)
+                        .createdByTeacherEmail("admin@nexus.com")
+                        .createdByName("Rajesh Kumar")
+                        .questionsJson("[{\"question\":\"Which keyword creates a block-scoped variable in ES6?\",\"options\":[\"var\",\"let\",\"const and let\",\"global\"],\"correctOption\":2},{\"question\":\"What does Promise.all() do?\",\"options\":[\"Rejects if any promise rejects\",\"Resolves first\",\"Runs synchronously\",\"Cancels all\"],\"correctOption\":0},{\"question\":\"What is the purpose of arrow functions?\",\"options\":[\"Lexical this binding\",\"New prototype\",\"Dynamic scope\",\"Slower execution\"],\"correctOption\":0},{\"question\":\"Which method creates a shallow copy of an array in ES6?\",\"options\":[\"Array.from() / Spread [...arr]\",\"arr.slice(-1)\",\"arr.copy()\",\"arr.shallow()\"],\"correctOption\":0},{\"question\":\"What does destructuring assignment do?\",\"options\":[\"Unpacks values from arrays/objects\",\"Destroys variables\",\"Compiles JS\",\"Deletes properties\"],\"correctOption\":0}]")
+                        .createdAt(LocalDateTime.now())
+                        .build();
+
+                    Test t2 = Test.builder()
+                        .testName("React Advanced Patterns Test")
+                        .courseTitle("Full Stack Web Development")
+                        .category("Full Stack Development")
+                        .duration("45 mins")
+                        .passScore("75%")
+                        .totalMarks(100)
+                        .testType("MCQ")
+                        .questionsCount(5)
+                        .createdByTeacherEmail("admin@nexus.com")
+                        .createdByName("Rajesh Kumar")
+                        .questionsJson("[{\"question\":\"What is the primary benefit of React hooks?\",\"options\":[\"Reuse stateful logic without changing hierarchy\",\"Replace JSX\",\"Faster than vanilla JS\",\"Disable re-renders\"],\"correctOption\":0},{\"question\":\"When does useEffect cleanup function run?\",\"options\":[\"Before component unmounts and before re-running effect\",\"Only on page reload\",\"Only on error\",\"Never\"],\"correctOption\":0},{\"question\":\"What is React.memo used for?\",\"options\":[\"Memoizing component render based on props\",\"Storing redux state\",\"Memoizing hooks\",\"Database caching\"],\"correctOption\":0},{\"question\":\"Which hook should be used for mutable values that don't trigger re-render?\",\"options\":[\"useRef\",\"useState\",\"useMemo\",\"useCallback\"],\"correctOption\":0},{\"question\":\"What problem does useCallback solve?\",\"options\":[\"Preserves function reference across renders\",\"Replaces Redux\",\"Executes async code\",\"Creates DOM nodes\"],\"correctOption\":0}]")
+                        .createdAt(LocalDateTime.now())
+                        .build();
+
+                    Test t3 = Test.builder()
+                        .testName("UI/UX Design Fundamentals")
+                        .courseTitle("UI/UX Design Mastery")
+                        .category("UI/UX Design")
+                        .duration("30 mins")
+                        .passScore("70%")
+                        .totalMarks(100)
+                        .testType("MCQ")
+                        .questionsCount(5)
+                        .createdByTeacherEmail("admin@nexus.com")
+                        .createdByName("Karan Malhotra")
+                        .questionsJson("[{\"question\":\"What is Fitts's Law primarily used for in UI design?\",\"options\":[\"Modeling target acquisition time based on distance & size\",\"Color contrast calculation\",\"Typography sizing\",\"CSS animation speed\"],\"correctOption\":0},{\"question\":\"What does Hick's Law state?\",\"options\":[\"Time to decide increases with number and complexity of choices\",\"Bigger buttons are always better\",\"Contrast should exceed 4.5:1\",\"Navigation must be at top\"],\"correctOption\":0},{\"question\":\"What is a wireframe?\",\"options\":[\"A basic visual guide of UI layout without full styling\",\"Final production code\",\"Color palette guide\",\"Vector logo\"],\"correctOption\":0},{\"question\":\"Which UX metric measures task completion ease?\",\"options\":[\"Single Ease Question (SEQ) / SUS\",\"Page views\",\"Bounce rate\",\"FPS\"],\"correctOption\":0},{\"question\":\"What is the purpose of user personas?\",\"options\":[\"Representarchetypal users to guide design decisions\",\"Marketing logos\",\"Sales tracking\",\"Code documentation\"],\"correctOption\":0}]")
+                        .createdAt(LocalDateTime.now())
+                        .build();
+
+                    Test t4 = Test.builder()
+                        .testName("Data Science Foundations")
+                        .courseTitle("Data Science & Machine Learning")
+                        .category("Data Science & Machine Learning")
+                        .duration("40 mins")
+                        .passScore("70%")
+                        .totalMarks(100)
+                        .testType("MCQ")
+                        .questionsCount(5)
+                        .createdByTeacherEmail("admin@nexus.com")
+                        .createdByName("Priya Sharma")
+                        .questionsJson("[{\"question\":\"Which Python library is primarily used for tabular data manipulation?\",\"options\":[\"Pandas\",\"PyTorch\",\"Flask\",\"Matplotlib\"],\"correctOption\":0},{\"question\":\"What is overfitting in machine learning?\",\"options\":[\"Model performs well on training data but poorly on test data\",\"Model underperforms everywhere\",\"Too few parameters\",\"Fast training time\"],\"correctOption\":0},{\"question\":\"Which metric evaluates classification on imbalanced datasets?\",\"options\":[\"F1-Score / ROC-AUC\",\"Accuracy\",\"Mean Squared Error\",\"R-squared\"],\"correctOption\":0},{\"question\":\"What does PCA stand for in dimensionality reduction?\",\"options\":[\"Principal Component Analysis\",\"Python Classification Algorithm\",\"Partial Component Array\",\"Predictive Correlation Analysis\"],\"correctOption\":0},{\"question\":\"Which algorithm is an ensemble of decision trees?\",\"options\":[\"Random Forest\",\"Linear Regression\",\"K-Means\",\"Naive Bayes\"],\"correctOption\":0}]")
+                        .createdAt(LocalDateTime.now())
+                        .build();
+
+                    Test t5 = Test.builder()
+                        .testName("Java Full Stack & Spring Boot Assessment")
+                        .courseTitle("Java Full Stack Development")
+                        .category("Java Full Stack")
+                        .duration("45 mins")
+                        .passScore("75%")
+                        .totalMarks(100)
+                        .testType("MCQ")
+                        .questionsCount(5)
+                        .createdByTeacherEmail("admin@nexus.com")
+                        .createdByName("Amit Patel")
+                        .questionsJson("[{\"question\":\"Which Spring annotation maps an HTTP GET request to a handler method?\",\"options\":[\"@GetMapping\",\"@PostMapping\",\"@RequestMapping(method=POST)\",\"@QueryMapping\"],\"correctOption\":0},{\"question\":\"What is Dependency Injection in Spring?\",\"options\":[\"Objects receive dependencies from external container\",\"Hardcoded object creation\",\"Java Reflection bypass\",\"Thread pooling\"],\"correctOption\":0},{\"question\":\"What is JPA used for in Spring Boot?\",\"options\":[\"Object-Relational Mapping (ORM) and data persistence\",\"Frontend routing\",\"JWT generation\",\"Load balancing\"],\"correctOption\":0},{\"question\":\"Which interface does Spring Data JPA repository extend for standard CRUD?\",\"options\":[\"JpaRepository / CrudRepository\",\"Serializable\",\"Runnable\",\"Callable\"],\"correctOption\":0},{\"question\":\"What does @Transactional ensure in Spring?\",\"options\":[\"ACID compliance across method operations\",\"Fast serialization\",\"Thread safety only\",\"Cache eviction\"],\"correctOption\":0}]")
+                        .createdAt(LocalDateTime.now())
+                        .build();
+
+                    testRepository.saveAll(List.of(t1, t2, t3, t4, t5));
+                    log.info("Default tests seeded successfully");
+                }
+
+                if (recordingRepository.count() == 0) {
+                    ClassRecording r1 = new ClassRecording();
+                    r1.setTitle("Orientation & Full Stack Roadmap 2026");
+                    r1.setDescription("Introduction to full stack web development architectures, toolchains, and project expectations.");
+                    r1.setCourse("Full Stack Web Development");
+                    r1.setBatch("FSWD - Morning Batch A");
+                    r1.setClassDate(LocalDate.of(2026, 6, 2));
+                    r1.setDuration("1 hr 15 mins");
+                    r1.setFileName("orientation_fullstack.mp4");
+                    r1.setFilePath("uploads/recordings/orientation_fullstack.mp4");
+                    r1.setFileType("video/mp4");
+                    r1.setUploadedByEmail("admin@nexus.com");
+                    r1.setUploadedByRole("ADMIN");
+                    r1.setUploadedAt(LocalDateTime.now());
+                    ClassRecording s1 = recordingRepository.save(r1);
+                    s1.setFileUrl("/api/recordings/stream/" + s1.getId());
+                    recordingRepository.save(s1);
+
+                    ClassRecording r2 = new ClassRecording();
+                    r2.setTitle("Spring Boot 3 Core Architecture & Microservices");
+                    r2.setDescription("Deep dive into Spring IOC, bean lifecycle, JPA entities, and REST API design.");
+                    r2.setCourse("Java Full Stack Development");
+                    r2.setBatch("Java Full Stack - Evening Batch");
+                    r2.setClassDate(LocalDate.of(2026, 6, 16));
+                    r2.setDuration("1 hr 30 mins");
+                    r2.setFileName("spring_boot_arch.mp4");
+                    r2.setFilePath("uploads/recordings/spring_boot_arch.mp4");
+                    r2.setFileType("video/mp4");
+                    r2.setUploadedByEmail("admin@nexus.com");
+                    r2.setUploadedByRole("ADMIN");
+                    r2.setUploadedAt(LocalDateTime.now());
+                    ClassRecording s2 = recordingRepository.save(r2);
+                    s2.setFileUrl("/api/recordings/stream/" + s2.getId());
+                    recordingRepository.save(s2);
+
+                    log.info("Default class recordings seeded successfully");
                 }
             } catch (Exception e) {
                 log.warn("Seed skipped: {}", e.getMessage());

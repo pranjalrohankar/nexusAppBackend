@@ -285,13 +285,20 @@ public class StudentController {
         List<String> enrolledCourses = enrollmentRepository.findByStudent(student)
                 .stream().map(Enrollment::getCourseTitle).collect(Collectors.toList());
 
-        if (enrolledCourses.isEmpty()) return ResponseEntity.ok(Collections.emptyList());
+        List<ClassRecording> recordings;
+        if (enrolledCourses.isEmpty()) {
+            recordings = recordingRepository.findAll();
+        } else {
+            recordings = enrolledCourses.stream()
+                    .flatMap(course -> recordingRepository.findByCourseIgnoreCase(course).stream())
+                    .collect(Collectors.toList());
+            if (recordings.isEmpty()) {
+                recordings = recordingRepository.findAll();
+            }
+        }
 
-        List<ClassRecording> recordings = enrolledCourses.stream()
-                .flatMap(course -> recordingRepository.findByCourseIgnoreCase(course).stream())
-                .sorted(Comparator.comparing(ClassRecording::getUploadedAt,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                .collect(Collectors.toList());
+        recordings.sort(Comparator.comparing(ClassRecording::getUploadedAt,
+                Comparator.nullsLast(Comparator.reverseOrder())));
 
         // Build user map for fast lookup of uploader names by email
         Map<String, String> userNames = new HashMap<>();
@@ -319,6 +326,9 @@ public class StudentController {
             dto.put("classDate", r.getClassDate() != null ? r.getClassDate().toString() : null);
             dto.put("duration", r.getDuration());
             dto.put("fileName", r.getFileName());
+            dto.put("filePath", r.getFilePath());
+            dto.put("fileUrl", r.getFileUrl() != null && !r.getFileUrl().isBlank() 
+                    ? r.getFileUrl() : "/api/recordings/stream/" + r.getId());
             dto.put("fileSize", r.getFileSize());
             dto.put("uploadedAt", r.getUploadedAt() != null ? r.getUploadedAt().toString() : null);
             dto.put("uploadedByEmail", r.getUploadedByEmail());
@@ -351,14 +361,21 @@ public class StudentController {
         List<String> enrolledCourses = enrollmentRepository.findByStudent(student)
                 .stream().map(Enrollment::getCourseTitle).collect(Collectors.toList());
 
-        if (enrolledCourses.isEmpty()) return ResponseEntity.ok(Collections.emptyList());
+        List<StudyMaterial> materials;
+        if (enrolledCourses.isEmpty()) {
+            materials = materialRepository.findAll();
+        } else {
+            materials = materialRepository.findAll().stream()
+                    .filter(m -> enrolledCourses.stream()
+                            .anyMatch(c -> c.equalsIgnoreCase(m.getCourse())))
+                    .collect(Collectors.toList());
+            if (materials.isEmpty()) {
+                materials = materialRepository.findAll();
+            }
+        }
 
-        List<StudyMaterial> materials = materialRepository.findAll().stream()
-                .filter(m -> enrolledCourses.stream()
-                        .anyMatch(c -> c.equalsIgnoreCase(m.getCourse())))
-                .sorted(Comparator.comparing(StudyMaterial::getUploadedAt,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                .collect(Collectors.toList());
+        materials.sort(Comparator.comparing(StudyMaterial::getUploadedAt,
+                Comparator.nullsLast(Comparator.reverseOrder())));
 
         return ResponseEntity.ok(materials);
     }

@@ -38,7 +38,24 @@ public class TestAttemptController {
             return ResponseEntity.notFound().build();
         }
 
-        List<TestAttempt> attempts = testAttemptRepository.findByStudent(studentOpt.get());
+        Student student = studentOpt.get();
+        List<TestAttempt> attempts = testAttemptRepository.findByStudent(student);
+
+        // Also merge any attempts recorded with student's email
+        String email = student.getEmail() != null ? student.getEmail() : (student.getUser() != null ? student.getUser().getEmail() : null);
+        if (email != null && !email.isBlank()) {
+            List<TestAttempt> byEmail = testAttemptRepository.findByStudentEmailIgnoreCaseOrderBySubmittedAtDesc(email.trim());
+            Map<Long, TestAttempt> merged = new HashMap<>();
+            for (TestAttempt a : attempts) {
+                if (a.getId() != null) merged.put(a.getId(), a);
+            }
+            for (TestAttempt a : byEmail) {
+                if (a.getId() != null && !merged.containsKey(a.getId())) {
+                    merged.put(a.getId(), a);
+                }
+            }
+            attempts = new java.util.ArrayList<>(merged.values());
+        }
 
         List<Map<String, Object>> result = attempts.stream().map(attempt -> {
             Map<String, Object> dto = new HashMap<>();
