@@ -32,7 +32,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/health").permitAll()
+                .requestMatchers("/api/health", "/api/db-test").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/batches/*/covered-topics", "/api/batches/**/covered-topics").permitAll()

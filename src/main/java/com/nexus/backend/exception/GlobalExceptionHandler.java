@@ -7,11 +7,13 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-@RestControllerAdvice
+@org.springframework.web.bind.annotation.RestControllerAdvice
+@lombok.extern.slf4j.Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ApiResponse<Object>> handleBadRequest(BadRequestException ex) {
+        log.warn("Bad request: {}", ex.getMessage());
         return new ResponseEntity<>(
                 ApiResponse.error(ex.getMessage()),
                 HttpStatus.BAD_REQUEST
@@ -28,8 +30,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGlobalException(Exception ex) {
+        log.error("Unhandled server exception: ", ex);
         return new ResponseEntity<>(
-                ApiResponse.error("Something went wrong: " + ex.getMessage()),
+                ApiResponse.error("Server error: " + ex.getMessage()),
                 HttpStatus.INTERNAL_SERVER_ERROR
         );
     }
