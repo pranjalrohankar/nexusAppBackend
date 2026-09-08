@@ -17,7 +17,7 @@ import java.util.List;
  */
 @Entity
 @Data
-@Table(name = "Batches")
+@Table(name = "batches")
 @AllArgsConstructor
 @NoArgsConstructor
 @Setter

@@ -51,7 +51,10 @@ public class DatabaseSchemaRepairRunner implements CommandLineRunner {
             "ALTER TABLE IF EXISTS \"courses\" ADD COLUMN IF NOT EXISTS auto_generate_meet_link BOOLEAN DEFAULT false",
             "ALTER TABLE IF EXISTS \"Courses\" ADD COLUMN IF NOT EXISTS auto_generate_meet_link BOOLEAN DEFAULT false",
 
-            // Batches table variations
+            // Batches table creation & variations
+            "CREATE TABLE IF NOT EXISTS batches (id BIGSERIAL PRIMARY KEY, batch_name VARCHAR(255), select_course VARCHAR(255), instructor VARCHAR(255), start_date DATE, end_date DATE, status VARCHAR(50), created_at TIMESTAMP, class_timings VARCHAR(255), duration VARCHAR(255), google_meet_link VARCHAR(255), covered_topics TEXT)",
+            "CREATE TABLE IF NOT EXISTS batch_class_days (batch_id BIGINT, class_days VARCHAR(50))",
+            "INSERT INTO batches (id, batch_name, select_course, instructor, start_date, end_date, status, created_at, class_timings, duration, google_meet_link, covered_topics) SELECT id, batch_name, select_course, instructor, start_date, end_date, status, created_at, class_timings, duration, google_meet_link, covered_topics FROM \"Batches\" ON CONFLICT (id) DO NOTHING",
             "ALTER TABLE IF EXISTS \"Batches\" ADD COLUMN IF NOT EXISTS covered_topics TEXT",
             "ALTER TABLE IF EXISTS batches ADD COLUMN IF NOT EXISTS covered_topics TEXT",
             "ALTER TABLE IF EXISTS \"batches\" ADD COLUMN IF NOT EXISTS covered_topics TEXT",

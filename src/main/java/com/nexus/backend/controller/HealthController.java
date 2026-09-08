@@ -23,7 +23,7 @@ public class HealthController {
         return ResponseEntity.ok(Map.of(
             "status", "UP",
             "service", "nexus-backend",
-            "version", "2026-09-08-v5-db-test",
+            "version", "2026-09-08-v6-batches-fix",
             "timestamp", System.currentTimeMillis()
         ));
     }
@@ -48,10 +48,10 @@ public class HealthController {
             }
 
             try {
-                Integer count = jdbcTemplate.queryForObject("SELECT count(*) FROM \"Batches\"", Integer.class);
-                result.put("Batches_count", count);
+                Integer count = jdbcTemplate.queryForObject("SELECT count(*) FROM batches", Integer.class);
+                result.put("batches_count", count);
             } catch (Exception e) {
-                result.put("Batches_error", e.getClass().getSimpleName() + ": " + e.getMessage());
+                result.put("batches_error", e.getClass().getSimpleName() + ": " + e.getMessage());
             }
 
             try {
