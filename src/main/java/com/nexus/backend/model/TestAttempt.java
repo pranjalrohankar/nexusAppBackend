@@ -33,12 +33,20 @@ public class TestAttempt {
 
     @Transient
     public Long getStudentId() {
-        return student != null ? student.getId() : null;
+        try {
+            return student != null ? student.getId() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Transient
     public Long getTestId() {
-        return test != null ? test.getId() : null;
+        try {
+            return test != null ? test.getId() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Column(name = "test_title")
