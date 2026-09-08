@@ -32,7 +32,9 @@ public class TestController {
         if (auth == null || auth.getPrincipal() == null) return null;
         String email = auth.getName();
         if (email == null) return null;
-        return userRepository.findByEmail(email).orElse(null);
+        return userRepository.findByEmailIgnoreCase(email.trim())
+                .or(() -> userRepository.findByEmail(email.trim()))
+                .orElse(null);
     }
 
     /**

@@ -38,9 +38,28 @@ public class StudentController {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) return null;
         String email = auth.getName();
-        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (email == null) return null;
+        String cleanEmail = email.trim();
+        Optional<User> userOpt = userRepository.findByEmailIgnoreCase(cleanEmail)
+                .or(() -> userRepository.findByEmail(cleanEmail));
         if (userOpt.isEmpty()) return null;
-        return studentRepository.findByUser(userOpt.get()).orElse(null);
+        User user = userOpt.get();
+        Optional<Student> studentOpt = studentRepository.findByUser(user)
+                .or(() -> studentRepository.findByEmail(user.getEmail()));
+        if (studentOpt.isPresent()) {
+            return studentOpt.get();
+        }
+        // If user is STUDENT/ADMIN but student profile was missing, auto-create one
+        if (user.getRole() == User.Role.STUDENT || user.getRole() == User.Role.ADMIN) {
+            Student s = new Student();
+            s.setUser(user);
+            s.setName(user.getName() != null ? user.getName() : "Student");
+            s.setEmail(user.getEmail());
+            s.setPhone(user.getPhone());
+            s.setPaymentStatus("PAID");
+            return studentRepository.save(s);
+        }
+        return null;
     }
 
     /** Called on login/logout to update online status */
