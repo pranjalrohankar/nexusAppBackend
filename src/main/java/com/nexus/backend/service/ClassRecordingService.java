@@ -57,16 +57,19 @@ public class ClassRecordingService {
             throw new IllegalArgumentException("Please select a video file or provide a video link.");
         }
 
+        String safeFileName = Objects.requireNonNullElse(file.getOriginalFilename(), "recording.mp4").replaceAll("\\s+", "_");
         String contentType = file.getContentType();
-        if (!isAllowedVideo(contentType)) {
-            throw new IllegalArgumentException("Only MP4, MKV, MOV and AVI videos are allowed.");
+        if (!isAllowedVideo(contentType, safeFileName)) {
+            throw new IllegalArgumentException("Uploaded file must be a valid video format (MP4, MOV, MKV, AVI, WebM).");
+        }
+        if (contentType == null || contentType.isBlank() || contentType.contains("octet-stream")) {
+            contentType = safeFileName.toLowerCase().endsWith(".mov") ? "video/quicktime" : "video/mp4";
         }
 
         String uploadDir = "uploads/recordings";
         Path uploadPath = Paths.get(uploadDir);
         Files.createDirectories(uploadPath);
 
-        String safeFileName = Objects.requireNonNullElse(file.getOriginalFilename(), "recording").replaceAll("\\s+", "_");
         String fileName = System.currentTimeMillis() + "_" + safeFileName;
         Path filePath = uploadPath.resolve(fileName);
 
@@ -148,11 +151,16 @@ public class ClassRecordingService {
         repository.deleteAll();
     }
 
-    private boolean isAllowedVideo(String contentType) {
-        if (contentType == null) return false;
-        return contentType.equals("video/mp4")
-                || contentType.equals("video/x-matroska")
-                || contentType.equals("video/quicktime")
-                || contentType.equals("video/x-msvideo");
+    private boolean isAllowedVideo(String contentType, String fileName) {
+        if (contentType != null && contentType.toLowerCase().startsWith("video/")) return true;
+        if (fileName != null) {
+            String lower = fileName.toLowerCase();
+            if (lower.endsWith(".mp4") || lower.endsWith(".mov") || lower.endsWith(".mkv")
+                    || lower.endsWith(".avi") || lower.endsWith(".webm") || lower.endsWith(".m4v")
+                    || lower.endsWith(".3gp") || lower.endsWith(".wmv") || lower.endsWith(".ts")) {
+                return true;
+            }
+        }
+        return contentType == null || contentType.contains("octet-stream");
     }
 }

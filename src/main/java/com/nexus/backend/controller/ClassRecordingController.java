@@ -41,28 +41,37 @@ public class ClassRecordingController {
 
     // Upload Recording
     @PostMapping("/upload")
-    public ResponseEntity<ClassRecording> uploadRecording(
+    public ResponseEntity<?> uploadRecording(
             @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam(value = "videoUrl", required = false) String videoUrl,
-            @RequestParam("title") String title,
+            @RequestParam(value = "title", required = false) String title,
             @RequestParam(value = "description", required = false) String description,
-            @RequestParam("classDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate classDate,
+            @RequestParam(value = "classDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate classDate,
             @RequestParam(value = "duration", required = false) String duration,
-            @RequestParam("course") String course,
-            @RequestParam("batch") String batch,
-            @RequestParam(value = "uploadedByEmail", required = false) String paramEmail) throws IOException {
+            @RequestParam(value = "course", required = false) String course,
+            @RequestParam(value = "batch", required = false) String batch,
+            @RequestParam(value = "uploadedByEmail", required = false) String paramEmail) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String currentEmail = auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())
+                    ? auth.getName()
+                    : (paramEmail != null && !paramEmail.isBlank() ? paramEmail : null);
+            String currentRole = auth != null && !auth.getAuthorities().isEmpty()
+                    ? auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
+                    : "ANONYMOUS";
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String currentEmail = auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())
-                ? auth.getName()
-                : (paramEmail != null && !paramEmail.isBlank() ? paramEmail : null);
-        String currentRole = auth != null && !auth.getAuthorities().isEmpty()
-                ? auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
-                : "ANONYMOUS";
+            String safeTitle = (title != null && !title.isBlank()) ? title.trim() : "Class Session";
+            LocalDate safeDate = classDate != null ? classDate : LocalDate.now();
 
-        ClassRecording recording = recordingService.uploadRecording(
-                file, videoUrl, title, description, classDate, duration, course, batch, currentEmail, currentRole);
-        return ResponseEntity.ok(recording);
+            ClassRecording recording = recordingService.uploadRecording(
+                    file, videoUrl, safeTitle, description, safeDate, duration, course, batch, currentEmail, currentRole);
+            return ResponseEntity.ok(recording);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Upload error: " + e.getMessage()));
+        }
     }
 
     // Get All Recordings (Filtered by Teacher role / student access)
