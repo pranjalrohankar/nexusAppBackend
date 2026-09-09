@@ -67,12 +67,17 @@ public class ClassRecordingService {
         }
 
         File uploadDir = new File("uploads/recordings");
-        if (!uploadDir.exists()) {
+        if (!uploadDir.exists() && !uploadDir.mkdirs()) {
+            // Fallback to system temp directory in restrictive container environments
+            uploadDir = new File(System.getProperty("java.io.tmpdir", "/tmp"), "uploads/recordings");
             uploadDir.mkdirs();
         }
 
         String fileName = System.currentTimeMillis() + "_" + safeFileName;
         File destFile = new File(uploadDir, fileName);
+        if (destFile.getParentFile() != null) {
+            destFile.getParentFile().mkdirs();
+        }
 
         // Robust stream copy from multipart stream to disk
         try (InputStream in = file.getInputStream()) {
@@ -80,7 +85,7 @@ public class ClassRecordingService {
         }
 
         recording.setFileName(fileName);
-        recording.setFilePath("uploads/recordings/" + fileName);
+        recording.setFilePath(destFile.getAbsolutePath());
         recording.setFileSize(destFile.length() > 0 ? destFile.length() : file.getSize());
         recording.setFileType(contentType);
 
@@ -93,6 +98,9 @@ public class ClassRecordingService {
         if (fileName != null && !fileName.isBlank()) {
             Path p1 = Paths.get("uploads", "recordings", fileName);
             if (Files.exists(p1)) return p1;
+
+            Path pTmp = Paths.get(System.getProperty("java.io.tmpdir", "/tmp"), "uploads", "recordings", fileName);
+            if (Files.exists(pTmp)) return pTmp;
         }
         if (storedFilePath != null && !storedFilePath.isBlank()) {
             Path p2 = Paths.get(storedFilePath);
@@ -102,6 +110,9 @@ public class ClassRecordingService {
             if (nameOnly != null) {
                 Path p3 = Paths.get("uploads", "recordings", nameOnly.toString());
                 if (Files.exists(p3)) return p3;
+
+                Path pTmp3 = Paths.get(System.getProperty("java.io.tmpdir", "/tmp"), "uploads", "recordings", nameOnly.toString());
+                if (Files.exists(pTmp3)) return pTmp3;
             }
         }
         return Paths.get("uploads", "recordings", fileName != null ? fileName : "");
