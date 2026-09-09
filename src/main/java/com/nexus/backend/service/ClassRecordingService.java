@@ -5,7 +5,7 @@ import com.nexus.backend.repository.ClassRecordingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -66,19 +66,22 @@ public class ClassRecordingService {
             contentType = safeFileName.toLowerCase().endsWith(".mov") ? "video/quicktime" : "video/mp4";
         }
 
-        String uploadDir = "uploads/recordings";
-        Path uploadPath = Paths.get(uploadDir);
-        Files.createDirectories(uploadPath);
+        File uploadDir = new File("uploads/recordings");
+        if (!uploadDir.exists()) {
+            uploadDir.mkdirs();
+        }
 
         String fileName = System.currentTimeMillis() + "_" + safeFileName;
-        Path filePath = uploadPath.resolve(fileName);
+        File destFile = new File(uploadDir, fileName);
 
-        // Stream directly to disk — no RAM load, works for 1-2 hour videos
-        file.transferTo(filePath.toAbsolutePath());
+        // Robust stream copy from multipart stream to disk
+        try (InputStream in = file.getInputStream()) {
+            Files.copy(in, destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
 
         recording.setFileName(fileName);
         recording.setFilePath("uploads/recordings/" + fileName);
-        recording.setFileSize(file.getSize());
+        recording.setFileSize(destFile.length() > 0 ? destFile.length() : file.getSize());
         recording.setFileType(contentType);
 
         ClassRecording saved = repository.save(recording);
