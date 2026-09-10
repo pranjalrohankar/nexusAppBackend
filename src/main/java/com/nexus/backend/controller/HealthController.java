@@ -23,7 +23,7 @@ public class HealthController {
         return ResponseEntity.ok(Map.of(
             "status", "UP",
             "service", "nexus-backend",
-            "version", "2026-09-09-v9-upload-fix",
+            "version", "2026-09-10-v10-permanent-video-storage",
             "timestamp", System.currentTimeMillis()
         ));
     }

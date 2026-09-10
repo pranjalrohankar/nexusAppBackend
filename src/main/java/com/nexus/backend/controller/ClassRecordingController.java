@@ -5,15 +5,16 @@ import com.nexus.backend.repository.BatchRepository;
 import com.nexus.backend.repository.UserRepository;
 import com.nexus.backend.service.ClassRecordingService;
 
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 
 import java.io.*;
 import java.nio.file.*;
@@ -212,12 +213,10 @@ public class ClassRecordingController {
 
     /**
      * Resilient stream endpoint with HTTP 206 Partial Content / Range requests.
-     * This allows video players to:
-     * - Start playing immediately without downloading the whole file
-     * - Seek/jump to any position (e.g. jump to 1:30:00 in a 2-hour video)
-     * - Resume interrupted streams
-     * - If local file or DB id is missing, gracefully redirect to public sample
-     * video stream instead of 404
+     * Features:
+     * - Direct redirection for external video links (YouTube, Drive, Vimeo, CDN)
+     * - Self-healing disk cache: Restores video bytes from PostgreSQL (bytea) if Render container woke up from sleep
+     * - HTTP 206 Range-based streaming allowing players to seek/jump to any point instantly
      */
     @GetMapping("/stream/{id}")
     public ResponseEntity<?> streamRecording(
@@ -239,6 +238,7 @@ public class ClassRecordingController {
                         .build();
             }
 
+            // 1. External URL redirection (YouTube, Google Drive, Vimeo, CDN)
             if (recording.getFileUrl() != null && recording.getFileUrl().startsWith("http") && !recording.getFileUrl().contains("/api/recordings/stream/")) {
                 try {
                     return ResponseEntity.status(HttpStatus.FOUND)
@@ -247,14 +247,43 @@ public class ClassRecordingController {
                 } catch (Exception ignored) {}
             }
 
+            // 2. Check local disk cache
             Path filePath = ClassRecordingService.resolveFilePath(recording.getFilePath(), recording.getFileName());
-            if (filePath == null || !Files.exists(filePath) || Files.size(filePath) <= 10240) {
+
+            // 3. Self-healing disk cache: if disk file was wiped by container sleep, restore from PostgreSQL
+            if ((filePath == null || !Files.exists(filePath) || Files.size(filePath) == 0) && recording.getFileData() != null && recording.getFileData().length > 0) {
+                try {
+                    File uploadDir = new File("uploads/recordings");
+                    if (!uploadDir.exists() && !uploadDir.mkdirs()) {
+                        uploadDir = new File(System.getProperty("java.io.tmpdir", "/tmp"), "uploads/recordings");
+                        uploadDir.mkdirs();
+                    }
+                    String safeName = (recording.getFileName() != null && !recording.getFileName().isBlank())
+                            ? recording.getFileName()
+                            : ("rec_" + recording.getId() + ".mp4");
+                    File restoredFile = new File(uploadDir, safeName);
+                    Files.write(restoredFile.toPath(), recording.getFileData(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    filePath = restoredFile.toPath();
+                } catch (Exception restoreEx) {
+                    // Fall back to direct ByteArrayResource if disk write fails
+                }
+            }
+
+            Resource resource = null;
+            long contentLength = 0;
+            if (filePath != null && Files.exists(filePath) && Files.size(filePath) > 0) {
+                resource = new UrlResource(filePath.toUri());
+                contentLength = Files.size(filePath);
+            } else if (recording.getFileData() != null && recording.getFileData().length > 0) {
+                resource = new ByteArrayResource(recording.getFileData());
+                contentLength = recording.getFileData().length;
+            }
+
+            if (resource == null || contentLength == 0) {
                 return ResponseEntity.status(HttpStatus.FOUND)
                         .location(FALLBACK_VIDEO_URI)
                         .build();
             }
-
-            Resource resource = new UrlResource(filePath.toUri());
 
             String contentType = recording.getFileType();
             MediaType mediaType = MediaType.valueOf("video/mp4");
@@ -266,10 +295,29 @@ public class ClassRecordingController {
                 }
             }
 
+            // HTTP 206 Partial Content for video seeking and smooth playback
+            if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
+                try {
+                    List<HttpRange> ranges = HttpRange.parseRanges(rangeHeader);
+                    if (!ranges.isEmpty()) {
+                        HttpRange range = ranges.get(0);
+                        long start = range.getRangeStart(contentLength);
+                        long end = range.getRangeEnd(contentLength);
+                        long rangeLength = Math.min(1024 * 1024 * 5, end - start + 1); // 5MB chunk
+                        ResourceRegion region = new ResourceRegion(resource, start, rangeLength);
+                        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                                .contentType(mediaType)
+                                .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                                .body(region);
+                    }
+                } catch (Exception ignored) {}
+            }
+
             return ResponseEntity.ok()
                     .contentType(mediaType)
                     .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + recording.getFileName() + "\"")
+                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(contentLength))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + (recording.getFileName() != null ? recording.getFileName() : "recording.mp4") + "\"")
                     .body(resource);
 
         } catch (Exception e) {

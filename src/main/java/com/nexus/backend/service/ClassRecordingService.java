@@ -66,9 +66,13 @@ public class ClassRecordingService {
             contentType = safeFileName.toLowerCase().endsWith(".mov") ? "video/quicktime" : "video/mp4";
         }
 
+        // Read video bytes for permanent database persistence (survives Render container sleep/restarts)
+        byte[] fileBytes = file.getBytes();
+        recording.setFileData(fileBytes);
+
+        // Save to local disk cache for high-speed streaming
         File uploadDir = new File("uploads/recordings");
         if (!uploadDir.exists() && !uploadDir.mkdirs()) {
-            // Fallback to system temp directory in restrictive container environments
             uploadDir = new File(System.getProperty("java.io.tmpdir", "/tmp"), "uploads/recordings");
             uploadDir.mkdirs();
         }
@@ -79,14 +83,19 @@ public class ClassRecordingService {
             destFile.getParentFile().mkdirs();
         }
 
-        // Robust stream copy from multipart stream to disk
-        try (InputStream in = file.getInputStream()) {
-            Files.copy(in, destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        // Write to local disk cache
+        try {
+            Files.write(destFile.toPath(), fileBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (Exception e) {
+            // If direct write fails, try stream copy fallback
+            try (InputStream in = file.getInputStream()) {
+                Files.copy(in, destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
         }
 
         recording.setFileName(fileName);
         recording.setFilePath(destFile.getAbsolutePath());
-        recording.setFileSize(destFile.length() > 0 ? destFile.length() : file.getSize());
+        recording.setFileSize(destFile.length() > 0 ? destFile.length() : (long) fileBytes.length);
         recording.setFileType(contentType);
 
         ClassRecording saved = repository.save(recording);

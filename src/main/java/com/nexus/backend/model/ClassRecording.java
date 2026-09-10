@@ -51,4 +51,9 @@ public class ClassRecording {
     private String uploadedByRole;
 
     private LocalDateTime uploadedAt;
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Basic(fetch = FetchType.LAZY)
+    @Column(name = "file_data", columnDefinition = "bytea")
+    private byte[] fileData;
 }
