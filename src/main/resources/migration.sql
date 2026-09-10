@@ -61,3 +61,15 @@ ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS uploaded_by_role
 ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP;
 ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS file_data BYTEA;
 
+-- Update orphan demo seed recordings without file_data to real video lecture URLs
+UPDATE class_recording 
+SET file_url = 'https://www.youtube.com/watch?v=nu_pCVPKzTk' 
+WHERE (file_data IS NULL OR octet_length(file_data) = 0) 
+  AND (file_url IS NULL OR file_url LIKE '%stream%') 
+  AND (title ILIKE '%Full Stack%' OR title ILIKE '%Orientation%');
+
+UPDATE class_recording 
+SET file_url = 'https://www.youtube.com/watch?v=35EQXmHKZYs' 
+WHERE (file_data IS NULL OR octet_length(file_data) = 0) 
+  AND (file_url IS NULL OR file_url LIKE '%stream%') 
+  AND (title ILIKE '%Spring Boot%' OR title ILIKE '%Java%');

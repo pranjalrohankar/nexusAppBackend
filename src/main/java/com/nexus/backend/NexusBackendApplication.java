@@ -386,12 +386,6 @@ public class NexusBackendApplication {
 
                 // 8. Seed Class Recordings
                 if (recordingRepository.count() == 0) {
-                    Path rec1Path = recDir.resolve("orientation_fullstack.mp4");
-                    if (!Files.exists(rec1Path)) Files.write(rec1Path, new byte[1024]);
-
-                    Path rec2Path = recDir.resolve("spring_boot_arch.mp4");
-                    if (!Files.exists(rec2Path)) Files.write(rec2Path, new byte[1024]);
-
                     ClassRecording r1 = new ClassRecording();
                     r1.setTitle("Orientation & Full Stack Roadmap 2026");
                     r1.setDescription("Introduction to full stack web development architectures, toolchains, and project expectations.");
@@ -399,15 +393,13 @@ public class NexusBackendApplication {
                     r1.setBatch("FSWD - Morning Batch A");
                     r1.setClassDate(LocalDate.of(2026, 6, 2));
                     r1.setDuration("1 hr 15 mins");
-                    r1.setFileName("orientation_fullstack.mp4");
-                    r1.setFilePath("uploads/recordings/orientation_fullstack.mp4");
+                    r1.setFileName("Online Video Lecture");
+                    r1.setFileUrl("https://www.youtube.com/watch?v=nu_pCVPKzTk");
                     r1.setFileType("video/mp4");
                     r1.setUploadedByEmail("teacher@nexus.com");
                     r1.setUploadedByRole("TEACHER");
                     r1.setUploadedAt(LocalDateTime.now().minusDays(3));
-                    ClassRecording s1 = recordingRepository.save(r1);
-                    s1.setFileUrl("/api/recordings/stream/" + s1.getId());
-                    recordingRepository.save(s1);
+                    recordingRepository.save(r1);
 
                     ClassRecording r2 = new ClassRecording();
                     r2.setTitle("Spring Boot 3 Core Architecture & Microservices");
@@ -416,17 +408,15 @@ public class NexusBackendApplication {
                     r2.setBatch("Java Full Stack - Evening Batch");
                     r2.setClassDate(LocalDate.of(2026, 6, 16));
                     r2.setDuration("1 hr 30 mins");
-                    r2.setFileName("spring_boot_arch.mp4");
-                    r2.setFilePath("uploads/recordings/spring_boot_arch.mp4");
+                    r2.setFileName("Online Video Lecture");
+                    r2.setFileUrl("https://www.youtube.com/watch?v=35EQXmHKZYs");
                     r2.setFileType("video/mp4");
                     r2.setUploadedByEmail("teacher@nexus.com");
                     r2.setUploadedByRole("TEACHER");
                     r2.setUploadedAt(LocalDateTime.now().minusDays(1));
-                    ClassRecording s2 = recordingRepository.save(r2);
-                    s2.setFileUrl("/api/recordings/stream/" + s2.getId());
-                    recordingRepository.save(s2);
+                    recordingRepository.save(r2);
 
-                    log.info("Default class recordings seeded successfully");
+                    log.info("Default class recordings seeded successfully with real lecture video links");
                 }
 
                 // 9. Seed Study Materials

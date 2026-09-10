@@ -26,9 +26,6 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/recordings")
 public class ClassRecordingController {
 
-    private static final String FALLBACK_VIDEO_URL = "https://vjs.zencdn.net/v/oceans.mp4";
-    private static final java.net.URI FALLBACK_VIDEO_URI = java.net.URI.create(FALLBACK_VIDEO_URL);
-
     private final ClassRecordingService recordingService;
     private final UserRepository userRepository;
     private final BatchRepository batchRepository;
@@ -227,15 +224,13 @@ public class ClassRecordingController {
             try {
                 recording = recordingService.getRecordingById(id);
             } catch (Exception ex) {
-                return ResponseEntity.status(HttpStatus.FOUND)
-                        .location(FALLBACK_VIDEO_URI)
-                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("success", false, "message", "Recording not found."));
             }
 
             if (recording == null) {
-                return ResponseEntity.status(HttpStatus.FOUND)
-                        .location(FALLBACK_VIDEO_URI)
-                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("success", false, "message", "Recording not found."));
             }
 
             // 1. External URL redirection (YouTube, Google Drive, Vimeo, CDN)
@@ -280,9 +275,8 @@ public class ClassRecordingController {
             }
 
             if (resource == null || contentLength == 0) {
-                return ResponseEntity.status(HttpStatus.FOUND)
-                        .location(FALLBACK_VIDEO_URI)
-                        .build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("success", false, "message", "Video data is not available for this recording. Please re-upload."));
             }
 
             String contentType = recording.getFileType();
@@ -321,9 +315,8 @@ public class ClassRecordingController {
                     .body(resource);
 
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(FALLBACK_VIDEO_URI)
-                    .build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Error streaming recording: " + e.getMessage()));
         }
     }
 
