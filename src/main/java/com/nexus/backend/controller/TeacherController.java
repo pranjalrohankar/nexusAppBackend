@@ -61,7 +61,7 @@ public class TeacherController {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             User user = getUserByAuth(auth);
-            if (user == null) return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
+            if (user == null) return ResponseEntity.status(401).body(Map.of("success", false, "message", "Unauthorized"));
             Teacher teacher = getTeacherForUser(user);
             if (teacher == null) return ResponseEntity.status(404).body(Map.of("success", false, "message", "Teacher not found"));
 
@@ -168,7 +168,7 @@ public class TeacherController {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             User user = getUserByAuth(auth);
-            if (user == null) return ResponseEntity.status(404).body(Map.of("success", false, "message", "User not found"));
+            if (user == null) return ResponseEntity.status(401).body(Map.of("success", false, "message", "Unauthorized"));
             Teacher teacher = getTeacherForUser(user);
             if (teacher == null) return ResponseEntity.status(404).body(Map.of("success", false, "message", "Teacher not found"));
 
@@ -246,8 +246,8 @@ public class TeacherController {
             if (user == null) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("success", false);
-                error.put("message", "User not found");
-                return ResponseEntity.status(404).body(error);
+                error.put("message", "Unauthorized");
+                return ResponseEntity.status(401).body(error);
             }
             Teacher teacher = getTeacherForUser(user);
             if (teacher == null) {
@@ -277,8 +277,8 @@ public class TeacherController {
             if (user == null) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("success", false);
-                error.put("message", "User not found");
-                return ResponseEntity.status(404).body(error);
+                error.put("message", "Unauthorized");
+                return ResponseEntity.status(401).body(error);
             }
             Teacher teacher = getTeacherForUser(user);
             if (teacher == null) {

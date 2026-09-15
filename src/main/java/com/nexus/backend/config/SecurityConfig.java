@@ -72,8 +72,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/batches", "/api/batches/**").hasAnyRole("ADMIN", "TEACHER")
 
                 // Teachers
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/teachers/all", "/api/teachers/{id}").permitAll()
                 .requestMatchers("/api/teachers/profile", "/api/teachers/my-batches", "/api/teachers/my-courses-batches").hasAnyRole("TEACHER", "ADMIN")
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/teachers/all", "/api/teachers/{id:[0-9]+}").permitAll()
                 .requestMatchers("/api/teachers", "/api/teachers/**").hasAnyRole("TEACHER", "ADMIN")
 
                 // Admin
