@@ -38,6 +38,20 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse> forgotPassword(@RequestBody Map<String, String> body) {
+        String email = body != null ? body.get("email") : null;
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Please enter a valid email address."));
+        }
+        try {
+            String msg = authService.processForgotPassword(email);
+            return ResponseEntity.ok(ApiResponse.ok(msg, null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @GetMapping("/login-history")
     public ResponseEntity<ApiResponse> getLoginHistory(@RequestParam Long userId) {
         List<LoginHistory> history = loginHistoryRepository.findByUserIdOrderByLoginTimeDesc(userId);

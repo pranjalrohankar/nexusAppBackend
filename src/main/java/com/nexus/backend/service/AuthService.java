@@ -32,8 +32,9 @@ public class AuthService {
     private final LoginHistoryRepository loginHistoryRepository;
     private final SecuritySettingsRepository securitySettingsRepository;
     private final EmailService emailService;
+    private final NotificationService notificationService;
 
-    @Value("${nexus.enquiry.admin-email}")
+    @Value("${nexus.enquiry.admin-email:adityanale1831@gmail.com}")
     private String adminNotificationEmail;
 
     // In-memory failed attempt counter: email -> count
@@ -200,5 +201,41 @@ public class AuthService {
         else if (ua.contains("Linux")) os = "Linux";
 
         return new String[]{browser, os};
+    }
+
+    public String processForgotPassword(String email) {
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Email address is required.");
+        }
+        String cleanEmail = email.trim();
+        User user = userRepository.findByEmailIgnoreCase(cleanEmail)
+                .or(() -> userRepository.findByEmail(cleanEmail))
+                .orElse(null);
+
+        if (user != null) {
+            String userName = user.getName() != null && !user.getName().isBlank() ? user.getName() : "User";
+            String userRole = user.getRole() != null ? user.getRole().name() : "STUDENT";
+            String requestTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMM dd, yyyy - hh:mm a", Locale.ROOT));
+
+            // 1. Send in-app notification to Admin
+            try {
+                notificationService.createNotification(
+                        "Password Reset Request: " + userName + " (" + cleanEmail + ")",
+                        "User " + userName + " (" + userRole + ") requested a password reset for account " + cleanEmail,
+                        "ADMIN"
+                );
+            } catch (Exception e) {
+                System.err.println("Failed to create in-app notification: " + e.getMessage());
+            }
+
+            // 2. Send email alert to Admin
+            try {
+                emailService.sendPasswordResetAlertToAdmin(adminNotificationEmail, userName, cleanEmail, userRole, requestTime);
+            } catch (Exception e) {
+                System.err.println("Failed to send reset email alert to admin: " + e.getMessage());
+            }
+        }
+
+        return "Password reset request submitted successfully. The administrator has been notified and will assist you.";
     }
 }
