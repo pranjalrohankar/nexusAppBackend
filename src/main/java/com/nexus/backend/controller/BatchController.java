@@ -56,6 +56,8 @@ public class BatchController {
             return ResponseEntity.notFound().build();
         }
 
+        boolean isBatchActive = (batch.getEffectiveStatus() != com.nexus.backend.enums.BatchStatus.COMPLETED);
+
         // Case-insensitive match + JOIN FETCH student to avoid lazy-load issues
         List<Enrollment> enrollments = enrollmentRepository.findByCourseTitleIgnoreCase(batch.getSelectCourse());
 
@@ -81,7 +83,8 @@ public class BatchController {
                 dto.put("name", name);
                 dto.put("email", email);
                 dto.put("phone", phone);
-                dto.put("active", "Paid".equalsIgnoreCase(e.getPaymentStatus()));
+                dto.put("active", isBatchActive);
+                dto.put("status", isBatchActive ? "Active" : "Inactive");
                 dto.put("joinedDate", e.getEnrollmentDate() != null ? e.getEnrollmentDate() : "");
                 // Online status
                 if (s.getUser() != null) {

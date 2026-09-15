@@ -172,7 +172,7 @@ public class AdminController {
         com.nexus.backend.enums.ClassDay todayDay = com.nexus.backend.enums.ClassDay.valueOf(
             java.time.LocalDate.now().getDayOfWeek().name().substring(0, 3));
         List<Map<String, Object>> classesToday = batchRepository.findAll().stream()
-            .filter(b -> b.getStatus() == com.nexus.backend.enums.BatchStatus.ACTIVE
+            .filter(b -> b.getEffectiveStatus() == com.nexus.backend.enums.BatchStatus.ACTIVE
                 && b.getClassDays() != null && b.getClassDays().contains(todayDay))
             .map(b -> {
                 Map<String, Object> m = new HashMap<>();
@@ -246,6 +246,8 @@ public class AdminController {
     @GetMapping("/students")
     @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse> getStudents() {
+        List<com.nexus.backend.model.Batch> allBatches = batchRepository.findAll();
+
         List<Map<String, Object>> result = studentRepository.findAll().stream().map(s -> {
             Map<String, Object> m = new HashMap<>();
             m.put("id", s.getId());
@@ -257,7 +259,38 @@ public class AdminController {
             m.put("name", name);
             m.put("email", email);
             m.put("phone", phone);
-            m.put("active", s.getUser().isActive());
+
+            // Collect all course titles the student is enrolled in
+            List<Enrollment> studentEnrollments = enrollmentRepository.findByStudent(s);
+            java.util.Set<String> enrolledCourseTitles = new java.util.HashSet<>();
+            if (s.getCourse() != null && !s.getCourse().isBlank()) {
+                enrolledCourseTitles.add(s.getCourse().trim().toLowerCase());
+            }
+            for (Enrollment e : studentEnrollments) {
+                if (e.getCourseTitle() != null && !e.getCourseTitle().isBlank()) {
+                    enrolledCourseTitles.add(e.getCourseTitle().trim().toLowerCase());
+                }
+            }
+
+            // Find matching batches for the student's courses
+            List<com.nexus.backend.model.Batch> studentBatches = allBatches.stream()
+                .filter(b -> b.getSelectCourse() != null && enrolledCourseTitles.contains(b.getSelectCourse().trim().toLowerCase()))
+                .collect(Collectors.toList());
+
+            // Determine active status:
+            // If student has matching batches:
+            //   - if all matching batches are COMPLETED, active = false (Inactive)
+            //   - if any matching batch is ACTIVE or UPCOMING, active = true (Active)
+            // If student has no matching batches yet (new student / just enrolled): active = true
+            boolean isStudentActive = true;
+            if (!studentBatches.isEmpty()) {
+                boolean allCompleted = studentBatches.stream()
+                    .allMatch(b -> b.getEffectiveStatus() == com.nexus.backend.enums.BatchStatus.COMPLETED);
+                isStudentActive = !allCompleted;
+            }
+
+            m.put("active", isStudentActive);
+            m.put("status", isStudentActive ? "Active" : "Inactive");
             m.put("course", s.getCourse() != null ? s.getCourse() : "");
             m.put("enrollmentDate", s.getEnrollmentDate() != null ? s.getEnrollmentDate() : "");
             m.put("paymentStatus", s.getPaymentStatus() != null ? s.getPaymentStatus() : "");
@@ -269,7 +302,7 @@ public class AdminController {
             m.put("pinCode", s.getPinCode() != null ? s.getPinCode() : "");
             m.put("guardianPhone", s.getGuardianPhone() != null ? s.getGuardianPhone() : "");
             m.put("createdAt", s.getUser().getCreatedAt() != null ? s.getUser().getCreatedAt().toString() : "");
-            List<Map<String, String>> enrollments = enrollmentRepository.findByStudent(s).stream().map(e -> {
+            List<Map<String, String>> enrollments = studentEnrollments.stream().map(e -> {
                 Map<String, String> em = new HashMap<>();
                 em.put("courseTitle", e.getCourseTitle());
                 em.put("enrollmentDate", e.getEnrollmentDate() != null ? e.getEnrollmentDate() : "");
@@ -299,7 +332,14 @@ public class AdminController {
             s.getUser().setName(fullName);
             s.setName(fullName); // sync Student.name so card reflects change
         }
-        if (body.containsKey("phone")) { s.getUser().setPhone(body.get("phone")); s.setPhone(body.get("phone")); }
+        if (body.containsKey("phone")) {
+            String phone = body.get("phone") != null ? body.get("phone").trim() : "";
+            if (!phone.isBlank() && !phone.matches("^[6-9]\\d{9}$")) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Invalid mobile number. Must be a 10-digit number starting with 6, 7, 8, or 9."));
+            }
+            s.getUser().setPhone(phone);
+            s.setPhone(phone);
+        }
         if (body.containsKey("email")) { s.getUser().setEmail(body.get("email")); s.setEmail(body.get("email")); }
         if (body.containsKey("dob")) s.setDob(body.get("dob"));
         if (body.containsKey("street")) s.setStreet(body.get("street"));
@@ -307,7 +347,13 @@ public class AdminController {
         if (body.containsKey("state")) s.setState(body.get("state"));
         if (body.containsKey("pinCode")) s.setPinCode(body.get("pinCode"));
         if (body.containsKey("guardianName")) s.setGuardianName(body.get("guardianName"));
-        if (body.containsKey("guardianPhone")) s.setGuardianPhone(body.get("guardianPhone"));
+        if (body.containsKey("guardianPhone")) {
+            String gPhone = body.get("guardianPhone") != null ? body.get("guardianPhone").trim() : "";
+            if (!gPhone.isBlank() && !gPhone.matches("^[6-9]\\d{9}$")) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Invalid guardian mobile number. Must be a 10-digit number starting with 6, 7, 8, or 9."));
+            }
+            s.setGuardianPhone(gPhone);
+        }
         if (body.containsKey("course")) s.setCourse(body.get("course"));
         if (body.containsKey("enrollmentDate")) s.setEnrollmentDate(body.get("enrollmentDate"));
         if (body.containsKey("paymentStatus")) s.setPaymentStatus(body.get("paymentStatus"));
@@ -425,7 +471,14 @@ public class AdminController {
                 .orElseThrow(() -> new RuntimeException("Teacher not found"));
         if (body.containsKey("firstName") && body.containsKey("lastName"))
             t.getUser().setName(body.get("firstName") + " " + body.get("lastName"));
-        if (body.containsKey("phone")) t.getUser().setPhone(body.get("phone"));
+        if (body.containsKey("phone")) {
+            String phone = body.get("phone") != null ? body.get("phone").trim() : "";
+            if (!phone.isBlank() && !phone.matches("^[6-9]\\d{9}$")) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Invalid mobile number. Must be a 10-digit number starting with 6, 7, 8, or 9."));
+            }
+            t.getUser().setPhone(phone);
+            t.setPhone(phone);
+        }
         if (body.containsKey("dob")) t.setDob(body.get("dob"));
         if (body.containsKey("street")) t.setStreet(body.get("street"));
         if (body.containsKey("city")) t.setCity(body.get("city"));
