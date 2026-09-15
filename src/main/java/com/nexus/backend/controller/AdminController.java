@@ -260,9 +260,9 @@ public class AdminController {
             m.put("email", email);
             m.put("phone", phone);
 
-            // Collect all course titles and explicit batches the student is enrolled in
-            List<Enrollment> studentEnrollments = enrollmentRepository.findByStudent(s);
-            if (studentEnrollments.isEmpty() && s.getCourse() != null && !s.getCourse().isBlank()) {
+            // Collect all unique course titles and explicit batches the student is enrolled in
+            List<Enrollment> rawEnrollments = enrollmentRepository.findByStudent(s);
+            if (rawEnrollments.isEmpty() && s.getCourse() != null && !s.getCourse().isBlank()) {
                 Enrollment autoEnr = new Enrollment();
                 autoEnr.setStudent(s);
                 autoEnr.setCourseTitle(s.getCourse().trim());
@@ -270,9 +270,35 @@ public class AdminController {
                 autoEnr.setPaymentStatus(s.getPaymentStatus() != null ? s.getPaymentStatus() : "PAID");
                 try {
                     autoEnr = enrollmentRepository.save(autoEnr);
-                    studentEnrollments = List.of(autoEnr);
+                    rawEnrollments = List.of(autoEnr);
                 } catch (Exception ignored) {}
             }
+
+            // Deduplicate enrollments by courseTitle (case-insensitive)
+            Map<String, Enrollment> uniqueEnrollmentsMap = new LinkedHashMap<>();
+            List<Enrollment> duplicatesToDelete = new ArrayList<>();
+            for (Enrollment e : rawEnrollments) {
+                if (e.getCourseTitle() == null || e.getCourseTitle().isBlank()) continue;
+                String cKey = e.getCourseTitle().trim().toLowerCase();
+                if (!uniqueEnrollmentsMap.containsKey(cKey)) {
+                    uniqueEnrollmentsMap.put(cKey, e);
+                } else {
+                    Enrollment existing = uniqueEnrollmentsMap.get(cKey);
+                    // If existing has no batch but this duplicate has a batch, keep the one with the batch
+                    if ((existing.getBatchName() == null || existing.getBatchName().isBlank()) && (e.getBatchName() != null && !e.getBatchName().isBlank())) {
+                        duplicatesToDelete.add(existing);
+                        uniqueEnrollmentsMap.put(cKey, e);
+                    } else {
+                        duplicatesToDelete.add(e);
+                    }
+                }
+            }
+            if (!duplicatesToDelete.isEmpty()) {
+                try {
+                    enrollmentRepository.deleteAll(duplicatesToDelete);
+                } catch (Exception ignored) {}
+            }
+            List<Enrollment> studentEnrollments = new ArrayList<>(uniqueEnrollmentsMap.values());
 
             java.util.Set<String> enrolledCourseTitles = new java.util.HashSet<>();
             if (s.getCourse() != null && !s.getCourse().isBlank()) {
@@ -583,23 +609,37 @@ public class AdminController {
         String courseTitle = body.get("courseTitle");
         if (courseTitle == null || courseTitle.isBlank())
             return ResponseEntity.badRequest().body(ApiResponse.error("courseTitle is required"));
-        if (enrollmentRepository.existsByStudentAndCourseTitle(s, courseTitle))
-            return ResponseEntity.badRequest().body(ApiResponse.error("Student is already enrolled in this course"));
-        Enrollment e = new Enrollment();
-        e.setStudent(s);
-        e.setCourseTitle(courseTitle);
-        e.setEnrollmentDate(body.getOrDefault("enrollmentDate", java.time.LocalDate.now().toString()));
-        e.setPaymentStatus(body.getOrDefault("paymentStatus", "Pending"));
+        String trimmedCourseTitle = courseTitle.trim();
+        List<Enrollment> existingEnrollments = enrollmentRepository.findByStudent(s);
+        Enrollment existingMatch = existingEnrollments.stream()
+            .filter(en -> en.getCourseTitle() != null && en.getCourseTitle().trim().equalsIgnoreCase(trimmedCourseTitle))
+            .findFirst().orElse(null);
+
+        Enrollment e = existingMatch != null ? existingMatch : new Enrollment();
+        if (existingMatch == null) {
+            e.setStudent(s);
+            e.setCourseTitle(trimmedCourseTitle);
+            e.setEnrollmentDate(body.getOrDefault("enrollmentDate", java.time.LocalDate.now().toString()));
+            e.setPaymentStatus(body.getOrDefault("paymentStatus", "Pending"));
+        } else {
+            if (body.containsKey("enrollmentDate") && body.get("enrollmentDate") != null && !body.get("enrollmentDate").isBlank()) {
+                e.setEnrollmentDate(body.get("enrollmentDate"));
+            }
+            if (body.containsKey("paymentStatus") && body.get("paymentStatus") != null && !body.get("paymentStatus").isBlank()) {
+                e.setPaymentStatus(body.get("paymentStatus"));
+            }
+        }
 
         String batchName = body.get("batchName");
-        if (batchName != null && !batchName.isBlank()) {
+        if (batchName != null && !batchName.isBlank() && !batchName.equalsIgnoreCase("No Batch") && !batchName.contains("No Batch")) {
             e.setBatchName(batchName.trim());
             com.nexus.backend.model.Batch b = batchRepository.findAll().stream()
                 .filter(x -> x.getBatchName() != null && x.getBatchName().equalsIgnoreCase(batchName.trim()))
                 .findFirst().orElse(null);
-            if (b != null) {
-                e.setBatchId(b.getId());
-            }
+            e.setBatchId(b != null ? b.getId() : null);
+        } else if (batchName != null && (batchName.isBlank() || batchName.equalsIgnoreCase("No Batch") || batchName.contains("No Batch"))) {
+            e.setBatchName(null);
+            e.setBatchId(null);
         }
         if (body.containsKey("batchId") && body.get("batchId") != null && !body.get("batchId").isBlank()) {
             e.setBatchId(Long.valueOf(body.get("batchId")));
