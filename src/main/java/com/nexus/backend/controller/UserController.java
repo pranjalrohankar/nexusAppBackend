@@ -39,7 +39,9 @@ public class UserController {
         if (auth == null || auth.getPrincipal() == null) return null;
         String email = auth.getName();
         if (email == null) return null;
-        return userRepository.findByEmail(email).orElse(null);
+        return userRepository.findByEmailIgnoreCase(email)
+                .or(() -> userRepository.findByEmail(email))
+                .orElse(null);
     }
 
     /**
