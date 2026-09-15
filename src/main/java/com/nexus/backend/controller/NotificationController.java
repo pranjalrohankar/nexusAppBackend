@@ -17,11 +17,24 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    // Teacher fetches their notifications by email/role
+    // User fetches their notifications by email/role
     @GetMapping("/my")
     public ResponseEntity<List<Notification>> getMyNotifications(Authentication auth) {
         String email = auth != null ? auth.getName() : null;
-        return ResponseEntity.ok(notificationService.getNotificationsForUser(email, "TEACHER"));
+        String role = "STUDENT";
+        if (auth != null && auth.getAuthorities() != null) {
+            if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+                role = "ADMIN";
+            } else if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER"))) {
+                role = "TEACHER";
+            }
+        }
+        return ResponseEntity.ok(notificationService.getNotificationsForUser(email, role));
+    }
+
+    @GetMapping("/admin")
+    public ResponseEntity<List<Notification>> getAdminNotifications() {
+        return ResponseEntity.ok(notificationService.getNotifications("ADMIN"));
     }
 
     @PatchMapping("/{id}/read")
