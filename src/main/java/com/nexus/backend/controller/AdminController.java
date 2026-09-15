@@ -272,25 +272,47 @@ public class AdminController {
                 }
             }
 
-            // Find matching batches for the student's courses
+            // Find matching batches for the student's courses (flexible case/substring matching)
             List<com.nexus.backend.model.Batch> studentBatches = allBatches.stream()
-                .filter(b -> b.getSelectCourse() != null && enrolledCourseTitles.contains(b.getSelectCourse().trim().toLowerCase()))
+                .filter(b -> {
+                    if (b.getSelectCourse() == null || b.getSelectCourse().isBlank()) return false;
+                    String batchCourse = b.getSelectCourse().trim().toLowerCase();
+                    return enrolledCourseTitles.stream().anyMatch(ec ->
+                        ec.equalsIgnoreCase(batchCourse) || ec.contains(batchCourse) || batchCourse.contains(ec)
+                    );
+                })
                 .collect(Collectors.toList());
 
             // Determine active status:
             // If student has matching batches:
-            //   - if all matching batches are COMPLETED, active = false (Inactive)
+            //   - if all matching batches are COMPLETED (past end date), active = false (Inactive)
             //   - if any matching batch is ACTIVE or UPCOMING, active = true (Active)
-            // If student has no matching batches yet (new student / just enrolled): active = true
+            // If student has enrolled courses but no batches yet created: active = true
+            // If student has no courses enrolled: active = false (Inactive)
             boolean isStudentActive = true;
             if (!studentBatches.isEmpty()) {
                 boolean allCompleted = studentBatches.stream()
                     .allMatch(b -> b.getEffectiveStatus() == com.nexus.backend.enums.BatchStatus.COMPLETED);
                 isStudentActive = !allCompleted;
+            } else if (enrolledCourseTitles.isEmpty()) {
+                isStudentActive = false;
             }
 
             m.put("active", isStudentActive);
             m.put("status", isStudentActive ? "Active" : "Inactive");
+
+            List<Map<String, Object>> batchList = studentBatches.stream().map(b -> {
+                Map<String, Object> bm = new HashMap<>();
+                bm.put("id", b.getId());
+                bm.put("batchName", b.getBatchName());
+                bm.put("selectCourse", b.getSelectCourse());
+                bm.put("status", b.getEffectiveStatus() != null ? b.getEffectiveStatus().name() : "ACTIVE");
+                bm.put("startDate", b.getStartDate() != null ? b.getStartDate().toString() : "");
+                bm.put("endDate", b.getEndDate() != null ? b.getEndDate().toString() : "");
+                return bm;
+            }).collect(Collectors.toList());
+            m.put("batches", batchList);
+
             m.put("course", s.getCourse() != null ? s.getCourse() : "");
             m.put("enrollmentDate", s.getEnrollmentDate() != null ? s.getEnrollmentDate() : "");
             m.put("paymentStatus", s.getPaymentStatus() != null ? s.getPaymentStatus() : "");
