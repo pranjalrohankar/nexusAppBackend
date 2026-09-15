@@ -262,6 +262,18 @@ public class AdminController {
 
             // Collect all course titles and explicit batches the student is enrolled in
             List<Enrollment> studentEnrollments = enrollmentRepository.findByStudent(s);
+            if (studentEnrollments.isEmpty() && s.getCourse() != null && !s.getCourse().isBlank()) {
+                Enrollment autoEnr = new Enrollment();
+                autoEnr.setStudent(s);
+                autoEnr.setCourseTitle(s.getCourse().trim());
+                autoEnr.setEnrollmentDate(s.getEnrollmentDate() != null ? s.getEnrollmentDate() : "2026-06-01");
+                autoEnr.setPaymentStatus(s.getPaymentStatus() != null ? s.getPaymentStatus() : "PAID");
+                try {
+                    autoEnr = enrollmentRepository.save(autoEnr);
+                    studentEnrollments = List.of(autoEnr);
+                } catch (Exception ignored) {}
+            }
+
             java.util.Set<String> enrolledCourseTitles = new java.util.HashSet<>();
             if (s.getCourse() != null && !s.getCourse().isBlank()) {
                 enrolledCourseTitles.add(s.getCourse().trim().toLowerCase());
@@ -272,52 +284,28 @@ public class AdminController {
                 }
             }
 
-            // Find matching batches for student enrollments:
-            // 1. By explicit batchId or batchName if assigned
-            // 2. Fallback by course title match
+            // Find matching batches ONLY from explicit assignments (batchId or batchName)
             List<com.nexus.backend.model.Batch> studentBatches = new java.util.ArrayList<>();
             java.util.Set<Long> addedBatchIds = new java.util.HashSet<>();
 
             for (Enrollment e : studentEnrollments) {
                 com.nexus.backend.model.Batch matched = null;
                 if (e.getBatchId() != null) {
-                    matched = allBatches.stream().filter(b -> b.getId() == e.getBatchId()).findFirst().orElse(null);
+                    matched = allBatches.stream().filter(b -> e.getBatchId().equals(b.getId())).findFirst().orElse(null);
                 }
-                if (matched == null && e.getBatchName() != null && !e.getBatchName().isBlank()) {
+                if (matched == null && e.getBatchName() != null && !e.getBatchName().isBlank() && !e.getBatchName().equalsIgnoreCase("No Batch")) {
                     matched = allBatches.stream().filter(b -> b.getBatchName() != null && b.getBatchName().equalsIgnoreCase(e.getBatchName().trim())).findFirst().orElse(null);
-                }
-                if (matched == null && e.getCourseTitle() != null && !e.getCourseTitle().isBlank()) {
-                    String ect = e.getCourseTitle().trim().toLowerCase();
-                    matched = allBatches.stream().filter(b -> {
-                        if (b.getSelectCourse() == null || b.getSelectCourse().isBlank()) return false;
-                        String bc = b.getSelectCourse().trim().toLowerCase();
-                        return ect.equalsIgnoreCase(bc) || ect.contains(bc) || bc.contains(ect);
-                    }).findFirst().orElse(null);
                 }
                 if (matched != null && addedBatchIds.add(matched.getId())) {
                     studentBatches.add(matched);
                 }
             }
 
-            // Fallback: If no enrollments had batch matched but student.course was set
-            if (studentBatches.isEmpty() && !enrolledCourseTitles.isEmpty()) {
-                for (com.nexus.backend.model.Batch b : allBatches) {
-                    if (b.getSelectCourse() == null || b.getSelectCourse().isBlank()) continue;
-                    String batchCourse = b.getSelectCourse().trim().toLowerCase();
-                    boolean match = enrolledCourseTitles.stream().anyMatch(ec ->
-                        ec.equalsIgnoreCase(batchCourse) || ec.contains(batchCourse) || batchCourse.contains(ec)
-                    );
-                    if (match && addedBatchIds.add(b.getId())) {
-                        studentBatches.add(b);
-                    }
-                }
-            }
-
             // Determine active status:
             // If student has matching batches:
-            //   - if all matching batches are COMPLETED (past end date), active = false (Inactive)
+            //   - if all matching batches are COMPLETED, active = false (Inactive)
             //   - if any matching batch is ACTIVE or UPCOMING, active = true (Active)
-            // If student has enrolled courses but no batches yet created: active = true
+            // If student has enrollments (even with No Batch): active = true
             // If student has no courses enrolled: active = false (Inactive)
             boolean isStudentActive = true;
             if (!studentBatches.isEmpty()) {
@@ -439,6 +427,43 @@ public class AdminController {
         // 2. Single batchName fallback
         String singleBatchName = body.containsKey("batchName") && body.get("batchName") != null ? body.get("batchName").toString().trim() : null;
 
+        // If student has no enrollments in DB yet, create one from s.getCourse() or body.course
+        if (enrollments.isEmpty()) {
+            String courseTitle = body.containsKey("course") && body.get("course") != null && !body.get("course").toString().isBlank()
+                ? body.get("course").toString().trim()
+                : (s.getCourse() != null && !s.getCourse().isBlank() ? s.getCourse().trim() : null);
+
+            if (courseTitle == null && !courseBatches.isEmpty()) {
+                courseTitle = courseBatches.keySet().iterator().next();
+            }
+
+            if (courseTitle != null && !courseTitle.isBlank()) {
+                Enrollment newEnr = new Enrollment();
+                newEnr.setStudent(s);
+                newEnr.setCourseTitle(courseTitle);
+                newEnr.setEnrollmentDate(s.getEnrollmentDate() != null ? s.getEnrollmentDate() : "2026-06-01");
+                newEnr.setPaymentStatus(s.getPaymentStatus() != null ? s.getPaymentStatus() : "PAID");
+                newEnr = enrollmentRepository.save(newEnr);
+                enrollments.add(newEnr);
+            }
+        }
+
+        // Also check if any key in courseBatches doesn't have an enrollment yet
+        for (Map.Entry<String, String> entry : courseBatches.entrySet()) {
+            String cTitle = entry.getKey();
+            if (cTitle == null || cTitle.isBlank()) continue;
+            boolean exists = enrollments.stream().anyMatch(e -> e.getCourseTitle() != null && e.getCourseTitle().equalsIgnoreCase(cTitle.trim()));
+            if (!exists) {
+                Enrollment extraEnr = new Enrollment();
+                extraEnr.setStudent(s);
+                extraEnr.setCourseTitle(cTitle.trim());
+                extraEnr.setEnrollmentDate(s.getEnrollmentDate() != null ? s.getEnrollmentDate() : "2026-06-01");
+                extraEnr.setPaymentStatus(s.getPaymentStatus() != null ? s.getPaymentStatus() : "PAID");
+                extraEnr = enrollmentRepository.save(extraEnr);
+                enrollments.add(extraEnr);
+            }
+        }
+
         for (Enrollment enr : enrollments) {
             String cTitle = enr.getCourseTitle() != null ? enr.getCourseTitle().trim() : "";
             String newBatchForCourse = courseBatches.get(cTitle);
@@ -453,11 +478,11 @@ public class AdminController {
             }
 
             if (newBatchForCourse != null) {
-                if (newBatchForCourse.isBlank()) {
+                if (newBatchForCourse.isBlank() || newBatchForCourse.equalsIgnoreCase("No Batch") || newBatchForCourse.contains("No Batch")) {
                     enr.setBatchName(null);
                     enr.setBatchId(null);
                 } else {
-                    String finalName = newBatchForCourse;
+                    String finalName = newBatchForCourse.trim();
                     com.nexus.backend.model.Batch b = allBatches.stream()
                         .filter(x -> x.getBatchName() != null && x.getBatchName().equalsIgnoreCase(finalName))
                         .findFirst().orElse(null);
@@ -465,22 +490,23 @@ public class AdminController {
                     enr.setBatchId(b != null ? b.getId() : null);
                 }
             } else if (singleBatchName != null && enrollments.size() == 1) {
-                if (singleBatchName.isBlank()) {
+                if (singleBatchName.isBlank() || singleBatchName.equalsIgnoreCase("No Batch") || singleBatchName.contains("No Batch")) {
                     enr.setBatchName(null);
                     enr.setBatchId(null);
                 } else {
+                    String finalName = singleBatchName.trim();
                     com.nexus.backend.model.Batch b = allBatches.stream()
-                        .filter(x -> x.getBatchName() != null && x.getBatchName().equalsIgnoreCase(singleBatchName))
+                        .filter(x -> x.getBatchName() != null && x.getBatchName().equalsIgnoreCase(finalName))
                         .findFirst().orElse(null);
-                    enr.setBatchName(singleBatchName);
+                    enr.setBatchName(finalName);
                     enr.setBatchId(b != null ? b.getId() : null);
                 }
             }
 
-            if (body.containsKey("paymentStatus"))
-                enr.setPaymentStatus((String) body.get("paymentStatus"));
-            if (body.containsKey("enrollmentDate"))
-                enr.setEnrollmentDate((String) body.get("enrollmentDate"));
+            if (body.containsKey("paymentStatus") && body.get("paymentStatus") != null)
+                enr.setPaymentStatus(body.get("paymentStatus").toString());
+            if (body.containsKey("enrollmentDate") && body.get("enrollmentDate") != null)
+                enr.setEnrollmentDate(body.get("enrollmentDate").toString());
 
             enrollmentRepository.save(enr);
         }
@@ -531,11 +557,11 @@ public class AdminController {
                 target.setBatchId(null);
                 target.setBatchName(batchName);
             }
-        } else if (batchName != null && !batchName.isBlank()) {
+        } else if (batchName != null && !batchName.isBlank() && !batchName.equalsIgnoreCase("No Batch") && !batchName.contains("No Batch")) {
             com.nexus.backend.model.Batch b = batchRepository.findAll().stream()
-                .filter(x -> x.getBatchName() != null && x.getBatchName().equalsIgnoreCase(batchName))
+                .filter(x -> x.getBatchName() != null && x.getBatchName().equalsIgnoreCase(batchName.trim()))
                 .findFirst().orElse(null);
-            target.setBatchName(batchName);
+            target.setBatchName(batchName.trim());
             target.setBatchId(b != null ? b.getId() : null);
         } else {
             // Cleared / No batch

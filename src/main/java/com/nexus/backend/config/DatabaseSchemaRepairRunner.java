@@ -93,7 +93,10 @@ public class DatabaseSchemaRepairRunner implements CommandLineRunner {
             "ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS file_type VARCHAR(100)",
             "ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS uploaded_by_email VARCHAR(255)",
             "ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS uploaded_by_role VARCHAR(50)",
-            "ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP"
+            "ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP",
+
+            // Sync missing student enrollments from students.course
+            "INSERT INTO enrollments (student_id, course_title, enrollment_date, payment_status) SELECT s.id, TRIM(s.course), COALESCE(s.enrollment_date, '2026-06-01'), COALESCE(s.payment_status, 'PAID') FROM students s WHERE s.course IS NOT NULL AND TRIM(s.course) != '' AND NOT EXISTS (SELECT 1 FROM enrollments e WHERE e.student_id = s.id AND LOWER(TRIM(e.course_title)) = LOWER(TRIM(s.course)))"
         );
 
         for (String sql : ddlStatements) {

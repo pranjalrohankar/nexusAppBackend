@@ -327,20 +327,11 @@ public class StudentController {
             List<Batch> allBatches = batchRepository.findAll();
             List<Batch> batches = new ArrayList<>();
             if (e.getBatchId() != null) {
-                allBatches.stream().filter(b -> b.getId() == e.getBatchId()).findFirst().ifPresent(batches::add);
+                allBatches.stream().filter(b -> e.getBatchId().equals(b.getId())).findFirst().ifPresent(batches::add);
             }
-            if (batches.isEmpty() && e.getBatchName() != null && !e.getBatchName().isBlank()) {
+            if (batches.isEmpty() && e.getBatchName() != null && !e.getBatchName().isBlank() && !e.getBatchName().equalsIgnoreCase("No Batch")) {
                 allBatches.stream().filter(b -> b.getBatchName() != null && b.getBatchName().equalsIgnoreCase(e.getBatchName().trim()))
                         .findFirst().ifPresent(batches::add);
-            }
-            if (batches.isEmpty()) {
-                batches = allBatches.stream()
-                        .filter(b -> b.getSelectCourse() != null && (
-                                b.getSelectCourse().trim().equalsIgnoreCase(e.getCourseTitle()) ||
-                                b.getSelectCourse().toLowerCase().contains(enrollTitle) ||
-                                (!enrollTitle.isEmpty() && enrollTitle.contains(b.getSelectCourse().toLowerCase()))
-                        ))
-                        .collect(Collectors.toList());
             }
 
             // Get Course details

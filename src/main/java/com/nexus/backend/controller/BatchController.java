@@ -67,10 +67,6 @@ public class BatchController {
         List<Enrollment> enrollments = courseEnrollments.stream().filter(e -> {
             if (e.getBatchId() != null && e.getBatchId().equals(batch.getId())) return true;
             if (e.getBatchName() != null && !e.getBatchName().isBlank() && e.getBatchName().equalsIgnoreCase(batch.getBatchName())) return true;
-            // Legacy student enrolled in course without specific batch assigned
-            if ((e.getBatchName() == null || e.getBatchName().isBlank()) && e.getBatchId() == null) {
-                return true;
-            }
             return false;
         }).collect(Collectors.toList());
 
