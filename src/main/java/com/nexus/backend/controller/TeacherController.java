@@ -24,6 +24,7 @@ public class TeacherController {
 
     private final TeacherRepository teacherRepository;
     private final UserRepository userRepository;
+    private final StudentRepository studentRepository;
     private final CourseRepository courseRepository;
     private final TeacherCourseAssignmentRepository assignmentRepository;
     private final EnrollmentRepository enrollmentRepository;
@@ -336,7 +337,7 @@ public class TeacherController {
             response.put("inactiveCount", teacherStats.stream()
                 .filter(t -> !"online".equals(t.getOnlineStatus()) && !"always_online".equals(t.getOnlineStatus()))
                 .count());
-            response.put("totalStudents", (int) enrollmentRepository.count());
+            response.put("totalStudents", (int) studentRepository.count());
             
             return ResponseEntity.ok(response);
         // amazonq-ignore-next-line

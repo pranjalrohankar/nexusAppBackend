@@ -69,4 +69,24 @@ public class Batch {
     // JSON array or delimiter-separated string of topics marked as covered by teacher
     @Column(name = "covered_topics", columnDefinition = "TEXT")
     private String coveredTopics;
+
+    /**
+     * Calculates the effective batch status based on today's date:
+     * - Past endDate -> COMPLETED
+     * - Today is on or after startDate (and before/on endDate) -> ACTIVE
+     * - Before startDate -> UPCOMING
+     */
+    public BatchStatus getEffectiveStatus() {
+        LocalDate now = LocalDate.now();
+        if (endDate != null && now.isAfter(endDate)) {
+            return BatchStatus.COMPLETED;
+        }
+        if (startDate != null) {
+            if (now.isBefore(startDate)) {
+                return BatchStatus.UPCOMING;
+            }
+            return BatchStatus.ACTIVE;
+        }
+        return status != null ? status : BatchStatus.ACTIVE;
+    }
 }

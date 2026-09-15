@@ -33,6 +33,7 @@ public class AuthService {
     private final SecuritySettingsRepository securitySettingsRepository;
     private final EmailService emailService;
     private final NotificationService notificationService;
+    private final com.nexus.backend.repository.PasswordResetRequestRepository passwordResetRequestRepository;
 
     @Value("${nexus.enquiry.admin-email:adityanale1831@gmail.com}")
     private String adminNotificationEmail;
@@ -212,29 +213,47 @@ public class AuthService {
                 .or(() -> userRepository.findByEmail(cleanEmail))
                 .orElse(null);
 
-        if (user != null) {
-            String userName = user.getName() != null && !user.getName().isBlank() ? user.getName() : "User";
-            String userRole = user.getRole() != null ? user.getRole().name() : "STUDENT";
-            String requestTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMM dd, yyyy - hh:mm a", Locale.ROOT));
+        String userName = (user != null && user.getName() != null && !user.getName().isBlank())
+                ? user.getName()
+                : cleanEmail.split("@")[0];
+        String userRole = (user != null && user.getRole() != null)
+                ? user.getRole().name()
+                : "STUDENT";
+        String requestTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMM dd, yyyy - hh:mm a", Locale.ROOT));
 
-            // 1. Send in-app notification to Admin
-            try {
-                notificationService.createNotification(
-                        "Password Reset Request: " + userName + " (" + cleanEmail + ")",
-                        "User " + userName + " (" + userRole + ") requested a password reset for account " + cleanEmail,
-                        "ADMIN"
-                );
-            } catch (Exception e) {
-                System.err.println("Failed to create in-app notification: " + e.getMessage());
-            }
+        // 1. Save persistent PasswordResetRequest entity for Admin Panel
+        try {
+            com.nexus.backend.model.PasswordResetRequest resetReq = com.nexus.backend.model.PasswordResetRequest.builder()
+                    .name(userName)
+                    .email(cleanEmail)
+                    .role(userRole)
+                    .status("PENDING")
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            passwordResetRequestRepository.save(resetReq);
+        } catch (Exception e) {
+            System.err.println("Failed to save password reset request: " + e.getMessage());
+        }
 
-            // 2. Send email alert to Admin
+        // 2. Send in-app notification to Admin
+        try {
+            notificationService.createNotification(
+                    "Password Reset Request: " + userName + " (" + cleanEmail + ")",
+                    "User " + userName + " (" + userRole + ") requested a password reset for account " + cleanEmail,
+                    "ADMIN"
+            );
+        } catch (Exception e) {
+            System.err.println("Failed to create in-app notification: " + e.getMessage());
+        }
+
+        // 3. Send email alert to Admin asynchronously in background (non-blocking for fast UI response)
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
             try {
                 emailService.sendPasswordResetAlertToAdmin(adminNotificationEmail, userName, cleanEmail, userRole, requestTime);
             } catch (Exception e) {
                 System.err.println("Failed to send reset email alert to admin: " + e.getMessage());
             }
-        }
+        });
 
         return "Password reset request submitted successfully. The administrator has been notified and will assist you.";
     }

@@ -28,4 +28,10 @@ public class Enrollment {
 
     @Column(name = "payment_status")
     private String paymentStatus;
+
+    @Column(name = "batch_name")
+    private String batchName;
+
+    @Column(name = "batch_id")
+    private Long batchId;
 }

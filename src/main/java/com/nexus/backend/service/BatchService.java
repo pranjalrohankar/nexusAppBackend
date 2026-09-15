@@ -44,7 +44,8 @@ public class BatchService {
         batch.setInstructor(request.getInstructor());
         batch.setStartDate(request.getStartDate());
         batch.setEndDate(request.getEndDate());
-        batch.setStatus(request.getStatus());
+        // Status is automatically computed based on start and end dates
+        batch.setStatus(batch.getEffectiveStatus());
         batch.setClassDays(request.getClassDays());
         batch.setClassTimings(request.getClassTimings());
         batch.setDuration(request.getDuration());
@@ -76,7 +77,8 @@ public class BatchService {
                 batchMap.put("instructor", batch.getInstructor());
                 batchMap.put("startDate", batch.getStartDate());
                 batchMap.put("endDate", batch.getEndDate());
-                batchMap.put("status", batch.getStatus());
+                // Always return real-time date-calculated status
+                batchMap.put("status", batch.getEffectiveStatus());
                 batchMap.put("createdAt", batch.getCreatedAt());
                 batchMap.put("classDays", batch.getClassDays());
 
@@ -149,7 +151,8 @@ public class BatchService {
         batch.setInstructor(request.getInstructor());
         batch.setStartDate(request.getStartDate());
         batch.setEndDate(request.getEndDate());
-        batch.setStatus(request.getStatus());
+        // Auto-calculate status from dates
+        batch.setStatus(batch.getEffectiveStatus());
         batch.setClassDays(request.getClassDays());
         batch.setClassTimings(request.getClassTimings());
         batch.setDuration(request.getDuration());
