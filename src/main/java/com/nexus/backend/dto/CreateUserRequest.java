@@ -45,6 +45,12 @@ public class CreateUserRequest {
 
     private String course;
 
+    @JsonProperty("batchName")
+    private String batchName;
+
+    @JsonProperty("batchId")
+    private Long batchId;
+
     @JsonProperty("enrollmentDate")
     private String enrollmentDate;
 

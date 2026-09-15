@@ -125,6 +125,8 @@ public class UserService {
                     e.setCourseTitle(req.getCourse());
                     e.setEnrollmentDate(req.getEnrollmentDate());
                     e.setPaymentStatus(req.getPaymentStatus());
+                    e.setBatchName(req.getBatchName());
+                    e.setBatchId(req.getBatchId());
                     enrollmentRepository.save(e);
                 } else {
                     throw new RuntimeException("Student is already enrolled in this course.");
@@ -181,6 +183,8 @@ public class UserService {
             e.setCourseTitle(req.getCourse());
             e.setEnrollmentDate(req.getEnrollmentDate());
             e.setPaymentStatus(req.getPaymentStatus());
+            e.setBatchName(req.getBatchName());
+            e.setBatchId(req.getBatchId());
             enrollmentRepository.save(e);
         }
     }

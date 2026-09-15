@@ -34,6 +34,14 @@ public class DatabaseSchemaRepairRunner implements CommandLineRunner {
             "UPDATE security_settings SET activity_status_enabled = true WHERE activity_status_enabled IS NULL",
             "UPDATE security_settings SET online = false WHERE online IS NULL",
 
+            // Enrollments batch columns
+            "ALTER TABLE IF EXISTS enrollments ADD COLUMN IF NOT EXISTS batch_name VARCHAR(255)",
+            "ALTER TABLE IF EXISTS enrollments ADD COLUMN IF NOT EXISTS batch_id BIGINT",
+            "ALTER TABLE IF EXISTS \"enrollments\" ADD COLUMN IF NOT EXISTS batch_name VARCHAR(255)",
+            "ALTER TABLE IF EXISTS \"enrollments\" ADD COLUMN IF NOT EXISTS batch_id BIGINT",
+            "ALTER TABLE IF EXISTS \"Enrollments\" ADD COLUMN IF NOT EXISTS batch_name VARCHAR(255)",
+            "ALTER TABLE IF EXISTS \"Enrollments\" ADD COLUMN IF NOT EXISTS batch_id BIGINT",
+
             // Courses table variations
             "ALTER TABLE IF EXISTS courses ADD COLUMN IF NOT EXISTS covered_topics TEXT",
             "ALTER TABLE IF EXISTS \"courses\" ADD COLUMN IF NOT EXISTS covered_topics TEXT",

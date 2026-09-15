@@ -260,7 +260,7 @@ public class AdminController {
             m.put("email", email);
             m.put("phone", phone);
 
-            // Collect all course titles the student is enrolled in
+            // Collect all course titles and explicit batches the student is enrolled in
             List<Enrollment> studentEnrollments = enrollmentRepository.findByStudent(s);
             java.util.Set<String> enrolledCourseTitles = new java.util.HashSet<>();
             if (s.getCourse() != null && !s.getCourse().isBlank()) {
@@ -272,16 +272,46 @@ public class AdminController {
                 }
             }
 
-            // Find matching batches for the student's courses (flexible case/substring matching)
-            List<com.nexus.backend.model.Batch> studentBatches = allBatches.stream()
-                .filter(b -> {
-                    if (b.getSelectCourse() == null || b.getSelectCourse().isBlank()) return false;
+            // Find matching batches for student enrollments:
+            // 1. By explicit batchId or batchName if assigned
+            // 2. Fallback by course title match
+            List<com.nexus.backend.model.Batch> studentBatches = new java.util.ArrayList<>();
+            java.util.Set<Long> addedBatchIds = new java.util.HashSet<>();
+
+            for (Enrollment e : studentEnrollments) {
+                com.nexus.backend.model.Batch matched = null;
+                if (e.getBatchId() != null) {
+                    matched = allBatches.stream().filter(b -> b.getId() == e.getBatchId()).findFirst().orElse(null);
+                }
+                if (matched == null && e.getBatchName() != null && !e.getBatchName().isBlank()) {
+                    matched = allBatches.stream().filter(b -> b.getBatchName() != null && b.getBatchName().equalsIgnoreCase(e.getBatchName().trim())).findFirst().orElse(null);
+                }
+                if (matched == null && e.getCourseTitle() != null && !e.getCourseTitle().isBlank()) {
+                    String ect = e.getCourseTitle().trim().toLowerCase();
+                    matched = allBatches.stream().filter(b -> {
+                        if (b.getSelectCourse() == null || b.getSelectCourse().isBlank()) return false;
+                        String bc = b.getSelectCourse().trim().toLowerCase();
+                        return ect.equalsIgnoreCase(bc) || ect.contains(bc) || bc.contains(ect);
+                    }).findFirst().orElse(null);
+                }
+                if (matched != null && addedBatchIds.add(matched.getId())) {
+                    studentBatches.add(matched);
+                }
+            }
+
+            // Fallback: If no enrollments had batch matched but student.course was set
+            if (studentBatches.isEmpty() && !enrolledCourseTitles.isEmpty()) {
+                for (com.nexus.backend.model.Batch b : allBatches) {
+                    if (b.getSelectCourse() == null || b.getSelectCourse().isBlank()) continue;
                     String batchCourse = b.getSelectCourse().trim().toLowerCase();
-                    return enrolledCourseTitles.stream().anyMatch(ec ->
+                    boolean match = enrolledCourseTitles.stream().anyMatch(ec ->
                         ec.equalsIgnoreCase(batchCourse) || ec.contains(batchCourse) || batchCourse.contains(ec)
                     );
-                })
-                .collect(Collectors.toList());
+                    if (match && addedBatchIds.add(b.getId())) {
+                        studentBatches.add(b);
+                    }
+                }
+            }
 
             // Determine active status:
             // If student has matching batches:
@@ -324,11 +354,14 @@ public class AdminController {
             m.put("pinCode", s.getPinCode() != null ? s.getPinCode() : "");
             m.put("guardianPhone", s.getGuardianPhone() != null ? s.getGuardianPhone() : "");
             m.put("createdAt", s.getUser().getCreatedAt() != null ? s.getUser().getCreatedAt().toString() : "");
-            List<Map<String, String>> enrollments = studentEnrollments.stream().map(e -> {
-                Map<String, String> em = new HashMap<>();
+            List<Map<String, Object>> enrollments = studentEnrollments.stream().map(e -> {
+                Map<String, Object> em = new HashMap<>();
+                em.put("id", e.getId());
                 em.put("courseTitle", e.getCourseTitle());
                 em.put("enrollmentDate", e.getEnrollmentDate() != null ? e.getEnrollmentDate() : "");
                 em.put("paymentStatus", e.getPaymentStatus() != null ? e.getPaymentStatus() : "");
+                em.put("batchName", e.getBatchName() != null ? e.getBatchName() : "");
+                em.put("batchId", e.getBatchId());
                 return em;
             }).collect(Collectors.toList());
             m.put("enrollments", enrollments);
@@ -346,7 +379,7 @@ public class AdminController {
     @PutMapping("/students/{id}")
     @SuppressWarnings("null")
     @Transactional
-    public ResponseEntity<ApiResponse> updateStudent(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public ResponseEntity<ApiResponse> updateStudent(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         Student s = studentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
         if (body.containsKey("firstName") && body.containsKey("lastName")) {
@@ -355,50 +388,163 @@ public class AdminController {
             s.setName(fullName); // sync Student.name so card reflects change
         }
         if (body.containsKey("phone")) {
-            String phone = body.get("phone") != null ? body.get("phone").trim() : "";
+            String phone = body.get("phone") != null ? body.get("phone").toString().trim() : "";
             if (!phone.isBlank() && !phone.matches("^[6-9]\\d{9}$")) {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Invalid mobile number. Must be a 10-digit number starting with 6, 7, 8, or 9."));
             }
             s.getUser().setPhone(phone);
             s.setPhone(phone);
         }
-        if (body.containsKey("email")) { s.getUser().setEmail(body.get("email")); s.setEmail(body.get("email")); }
-        if (body.containsKey("dob")) s.setDob(body.get("dob"));
-        if (body.containsKey("street")) s.setStreet(body.get("street"));
-        if (body.containsKey("city")) s.setCity(body.get("city"));
-        if (body.containsKey("state")) s.setState(body.get("state"));
-        if (body.containsKey("pinCode")) s.setPinCode(body.get("pinCode"));
-        if (body.containsKey("guardianName")) s.setGuardianName(body.get("guardianName"));
+        if (body.containsKey("email")) { String em = body.get("email").toString(); s.getUser().setEmail(em); s.setEmail(em); }
+        if (body.containsKey("dob")) s.setDob((String) body.get("dob"));
+        if (body.containsKey("street")) s.setStreet((String) body.get("street"));
+        if (body.containsKey("city")) s.setCity((String) body.get("city"));
+        if (body.containsKey("state")) s.setState((String) body.get("state"));
+        if (body.containsKey("pinCode")) s.setPinCode((String) body.get("pinCode"));
+        if (body.containsKey("guardianName")) s.setGuardianName((String) body.get("guardianName"));
         if (body.containsKey("guardianPhone")) {
-            String gPhone = body.get("guardianPhone") != null ? body.get("guardianPhone").trim() : "";
+            String gPhone = body.get("guardianPhone") != null ? body.get("guardianPhone").toString().trim() : "";
             if (!gPhone.isBlank() && !gPhone.matches("^[6-9]\\d{9}$")) {
                 return ResponseEntity.badRequest().body(ApiResponse.error("Invalid guardian mobile number. Must be a 10-digit number starting with 6, 7, 8, or 9."));
             }
             s.setGuardianPhone(gPhone);
         }
-        if (body.containsKey("course")) s.setCourse(body.get("course"));
-        if (body.containsKey("enrollmentDate")) s.setEnrollmentDate(body.get("enrollmentDate"));
-        if (body.containsKey("paymentStatus")) s.setPaymentStatus(body.get("paymentStatus"));
+        if (body.containsKey("course")) s.setCourse((String) body.get("course"));
+        if (body.containsKey("enrollmentDate")) s.setEnrollmentDate((String) body.get("enrollmentDate"));
+        if (body.containsKey("paymentStatus")) s.setPaymentStatus((String) body.get("paymentStatus"));
         userRepository.save(s.getUser());
         studentRepository.save(s);
 
-        // ── Also update the Enrollment record so the card reflects the change ──
+        // ── Update Enrollment records and Batch assignments ──
         List<Enrollment> enrollments = enrollmentRepository.findByStudent(s);
-        if (!enrollments.isEmpty()) {
-            // If a specific course is being updated, match it; otherwise update the first enrollment
-            String targetCourse = body.containsKey("course") ? body.get("course") : null;
-            Enrollment target = enrollments.stream()
-                .filter(e -> targetCourse == null || e.getCourseTitle().equalsIgnoreCase(targetCourse))
-                .findFirst()
-                .orElse(enrollments.get(0));
-            if (body.containsKey("paymentStatus"))
-                target.setPaymentStatus(body.get("paymentStatus"));
-            if (body.containsKey("enrollmentDate"))
-                target.setEnrollmentDate(body.get("enrollmentDate"));
-            enrollmentRepository.save(target);
+        List<com.nexus.backend.model.Batch> allBatches = batchRepository.findAll();
+
+        // 1. Handle courseBatches map (courseTitle -> batchName)
+        Map<String, String> courseBatches = new HashMap<>();
+        if (body.containsKey("courseBatches")) {
+            Object cbObj = body.get("courseBatches");
+            if (cbObj instanceof Map) {
+                ((Map<?, ?>) cbObj).forEach((k, v) -> {
+                    if (k != null) courseBatches.put(k.toString().trim(), v != null ? v.toString().trim() : "");
+                });
+            } else if (cbObj instanceof String str && !str.isBlank()) {
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    Map<String, String> parsed = mapper.readValue(str, new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {});
+                    courseBatches.putAll(parsed);
+                } catch (Exception ignored) {}
+            }
         }
 
-        return ResponseEntity.ok(ApiResponse.ok("Student updated", null));
+        // 2. Single batchName fallback
+        String singleBatchName = body.containsKey("batchName") && body.get("batchName") != null ? body.get("batchName").toString().trim() : null;
+
+        for (Enrollment enr : enrollments) {
+            String cTitle = enr.getCourseTitle() != null ? enr.getCourseTitle().trim() : "";
+            String newBatchForCourse = courseBatches.get(cTitle);
+            if (newBatchForCourse == null) {
+                // Try case-insensitive lookup
+                for (Map.Entry<String, String> entry : courseBatches.entrySet()) {
+                    if (entry.getKey().equalsIgnoreCase(cTitle)) {
+                        newBatchForCourse = entry.getValue();
+                        break;
+                    }
+                }
+            }
+
+            if (newBatchForCourse != null) {
+                if (newBatchForCourse.isBlank()) {
+                    enr.setBatchName(null);
+                    enr.setBatchId(null);
+                } else {
+                    String finalName = newBatchForCourse;
+                    com.nexus.backend.model.Batch b = allBatches.stream()
+                        .filter(x -> x.getBatchName() != null && x.getBatchName().equalsIgnoreCase(finalName))
+                        .findFirst().orElse(null);
+                    enr.setBatchName(finalName);
+                    enr.setBatchId(b != null ? b.getId() : null);
+                }
+            } else if (singleBatchName != null && enrollments.size() == 1) {
+                if (singleBatchName.isBlank()) {
+                    enr.setBatchName(null);
+                    enr.setBatchId(null);
+                } else {
+                    com.nexus.backend.model.Batch b = allBatches.stream()
+                        .filter(x -> x.getBatchName() != null && x.getBatchName().equalsIgnoreCase(singleBatchName))
+                        .findFirst().orElse(null);
+                    enr.setBatchName(singleBatchName);
+                    enr.setBatchId(b != null ? b.getId() : null);
+                }
+            }
+
+            if (body.containsKey("paymentStatus"))
+                enr.setPaymentStatus((String) body.get("paymentStatus"));
+            if (body.containsKey("enrollmentDate"))
+                enr.setEnrollmentDate((String) body.get("enrollmentDate"));
+
+            enrollmentRepository.save(enr);
+        }
+
+        return ResponseEntity.ok(ApiResponse.ok("Student updated successfully", null));
+    }
+
+    @PutMapping("/students/{id}/change-batch")
+    @Transactional
+    public ResponseEntity<ApiResponse> changeStudentBatch(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        Student s = studentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+
+        String courseTitle = body.get("courseTitle") != null ? body.get("courseTitle").toString().trim() : null;
+        String batchName = body.get("batchName") != null ? body.get("batchName").toString().trim() : null;
+        Long batchId = body.get("batchId") != null && !body.get("batchId").toString().isBlank()
+            ? Long.valueOf(body.get("batchId").toString()) : null;
+        Long enrollmentId = body.get("enrollmentId") != null && !body.get("enrollmentId").toString().isBlank()
+            ? Long.valueOf(body.get("enrollmentId").toString()) : null;
+
+        List<Enrollment> enrollments = enrollmentRepository.findByStudent(s);
+        Enrollment target = null;
+        if (enrollmentId != null) {
+            target = enrollments.stream().filter(e -> e.getId().equals(enrollmentId)).findFirst().orElse(null);
+        }
+        if (target == null && courseTitle != null && !courseTitle.isBlank()) {
+            target = enrollments.stream()
+                .filter(e -> e.getCourseTitle() != null && e.getCourseTitle().equalsIgnoreCase(courseTitle))
+                .findFirst().orElse(null);
+        }
+        if (target == null && !enrollments.isEmpty()) {
+            target = enrollments.get(0);
+        }
+
+        if (target == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("No enrollment found for student"));
+        }
+
+        // Resolve batch
+        if (batchId != null) {
+            com.nexus.backend.model.Batch b = batchRepository.findById(batchId).orElse(null);
+            if (b != null) {
+                target.setBatchId(b.getId());
+                target.setBatchName(b.getBatchName());
+            } else {
+                target.setBatchId(null);
+                target.setBatchName(batchName);
+            }
+        } else if (batchName != null && !batchName.isBlank()) {
+            com.nexus.backend.model.Batch b = batchRepository.findAll().stream()
+                .filter(x -> x.getBatchName() != null && x.getBatchName().equalsIgnoreCase(batchName))
+                .findFirst().orElse(null);
+            target.setBatchName(batchName);
+            target.setBatchId(b != null ? b.getId() : null);
+        } else {
+            // Cleared / No batch
+            target.setBatchName(null);
+            target.setBatchId(null);
+        }
+
+        enrollmentRepository.save(target);
+        return ResponseEntity.ok(ApiResponse.ok("Batch changed successfully", target));
     }
 
     @PostMapping("/students/{id}/enroll")
@@ -418,6 +564,21 @@ public class AdminController {
         e.setCourseTitle(courseTitle);
         e.setEnrollmentDate(body.getOrDefault("enrollmentDate", java.time.LocalDate.now().toString()));
         e.setPaymentStatus(body.getOrDefault("paymentStatus", "Pending"));
+
+        String batchName = body.get("batchName");
+        if (batchName != null && !batchName.isBlank()) {
+            e.setBatchName(batchName.trim());
+            com.nexus.backend.model.Batch b = batchRepository.findAll().stream()
+                .filter(x -> x.getBatchName() != null && x.getBatchName().equalsIgnoreCase(batchName.trim()))
+                .findFirst().orElse(null);
+            if (b != null) {
+                e.setBatchId(b.getId());
+            }
+        }
+        if (body.containsKey("batchId") && body.get("batchId") != null && !body.get("batchId").isBlank()) {
+            e.setBatchId(Long.valueOf(body.get("batchId")));
+        }
+
         enrollmentRepository.save(e);
         String studentName = s.getUser() != null ? s.getUser().getName() : "A student";
         // Find the teacher assigned to this course via batch instructor name

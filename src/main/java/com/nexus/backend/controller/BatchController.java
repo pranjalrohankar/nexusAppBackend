@@ -27,6 +27,9 @@ public class BatchController {
     private final EnrollmentRepository enrollmentRepository;
     private final SecuritySettingsRepository securitySettingsRepository;
 
+    private final com.nexus.backend.repository.StudentRepository studentRepository;
+    private final com.nexus.backend.repository.BatchRepository batchRepository;
+
     @PostMapping
     public ResponseEntity<Batch> createBatch(@RequestBody BatchDto request) {
         return ResponseEntity.ok(batchService.createBatch(request));
@@ -58,13 +61,25 @@ public class BatchController {
 
         boolean isBatchActive = (batch.getEffectiveStatus() != com.nexus.backend.enums.BatchStatus.COMPLETED);
 
-        // Case-insensitive match + JOIN FETCH student to avoid lazy-load issues
-        List<Enrollment> enrollments = enrollmentRepository.findByCourseTitleIgnoreCase(batch.getSelectCourse());
+        // Fetch enrollments and filter for this batch specifically
+        List<Enrollment> courseEnrollments = enrollmentRepository.findByCourseTitleIgnoreCase(batch.getSelectCourse());
+
+        List<Enrollment> enrollments = courseEnrollments.stream().filter(e -> {
+            if (e.getBatchId() != null && e.getBatchId().equals(batch.getId())) return true;
+            if (e.getBatchName() != null && !e.getBatchName().isBlank() && e.getBatchName().equalsIgnoreCase(batch.getBatchName())) return true;
+            // Legacy student enrolled in course without specific batch assigned
+            if ((e.getBatchName() == null || e.getBatchName().isBlank()) && e.getBatchId() == null) {
+                return true;
+            }
+            return false;
+        }).collect(Collectors.toList());
 
         List<Map<String, Object>> students = enrollments.stream().map(e -> {
             Map<String, Object> dto = new HashMap<>();
             dto.put("enrollmentId", e.getId());
             dto.put("courseTitle", e.getCourseTitle());
+            dto.put("batchName", e.getBatchName() != null ? e.getBatchName() : batch.getBatchName());
+            dto.put("batchId", batch.getId());
             dto.put("enrollmentDate", e.getEnrollmentDate() != null ? e.getEnrollmentDate() : "");
             dto.put("paymentStatus", e.getPaymentStatus() != null ? e.getPaymentStatus() : "");
             Student s = e.getStudent();
@@ -100,6 +115,65 @@ public class BatchController {
         }).collect(Collectors.toList());
 
         return ResponseEntity.ok(students);
+    }
+
+    @PutMapping("/{id}/reassign-student")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> reassignStudentFromBatch(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        Long studentId = body.get("studentId") != null && !body.get("studentId").toString().isBlank()
+            ? Long.valueOf(body.get("studentId").toString()) : null;
+        Long targetBatchId = body.get("targetBatchId") != null && !body.get("targetBatchId").toString().isBlank()
+            ? Long.valueOf(body.get("targetBatchId").toString()) : null;
+        String targetBatchName = body.get("targetBatchName") != null ? body.get("targetBatchName").toString().trim() : null;
+
+        if (studentId == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "studentId is required"));
+        }
+
+        Batch currentBatch = batchService.getBatchById(id);
+        Batch targetBatch = targetBatchId != null ? batchService.getBatchById(targetBatchId) : null;
+        if (targetBatch == null && targetBatchName != null && !targetBatchName.isBlank()) {
+            targetBatch = batchRepository.findAll().stream()
+                    .filter(b -> b.getBatchName() != null && b.getBatchName().equalsIgnoreCase(targetBatchName.trim()))
+                    .findFirst().orElse(null);
+        }
+
+        Student s = studentRepository.findById(studentId).orElse(null);
+        if (s == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Student not found"));
+        }
+
+        List<Enrollment> enrollments = enrollmentRepository.findByStudent(s);
+        String courseToMatch = currentBatch != null ? currentBatch.getSelectCourse() : null;
+        Enrollment enrollment = enrollments.stream()
+                .filter(e -> (courseToMatch != null && e.getCourseTitle() != null && e.getCourseTitle().equalsIgnoreCase(courseToMatch)) ||
+                        (e.getBatchId() != null && e.getBatchId().equals(id)) ||
+                        (currentBatch != null && e.getBatchName() != null && e.getBatchName().equalsIgnoreCase(currentBatch.getBatchName())))
+                .findFirst()
+                .orElse(!enrollments.isEmpty() ? enrollments.get(0) : null);
+
+        if (enrollment == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "No matching enrollment found for student"));
+        }
+
+        if (targetBatch != null) {
+            enrollment.setBatchId(targetBatch.getId());
+            enrollment.setBatchName(targetBatch.getBatchName());
+            if (targetBatch.getSelectCourse() != null && !targetBatch.getSelectCourse().isBlank()) {
+                enrollment.setCourseTitle(targetBatch.getSelectCourse());
+            }
+        } else if (targetBatchName != null && !targetBatchName.isBlank()) {
+            enrollment.setBatchName(targetBatchName.trim());
+            enrollment.setBatchId(null);
+        } else {
+            enrollment.setBatchName(null);
+            enrollment.setBatchId(null);
+        }
+
+        enrollmentRepository.save(enrollment);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Student reassigned to batch successfully"));
     }
 
     private String extractCoveredTopics(Object body) {
