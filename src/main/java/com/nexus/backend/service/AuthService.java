@@ -228,12 +228,14 @@ public class AuthService {
                 System.err.println("Failed to create in-app notification: " + e.getMessage());
             }
 
-            // 2. Send email alert to Admin
-            try {
-                emailService.sendPasswordResetAlertToAdmin(adminNotificationEmail, userName, cleanEmail, userRole, requestTime);
-            } catch (Exception e) {
-                System.err.println("Failed to send reset email alert to admin: " + e.getMessage());
-            }
+            // 2. Send email alert to Admin asynchronously in background (non-blocking for fast UI response)
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try {
+                    emailService.sendPasswordResetAlertToAdmin(adminNotificationEmail, userName, cleanEmail, userRole, requestTime);
+                } catch (Exception e) {
+                    System.err.println("Failed to send reset email alert to admin: " + e.getMessage());
+                }
+            });
         }
 
         return "Password reset request submitted successfully. The administrator has been notified and will assist you.";
