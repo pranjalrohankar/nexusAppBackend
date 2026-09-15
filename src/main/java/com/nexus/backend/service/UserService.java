@@ -37,6 +37,19 @@ public class UserService {
     @Transactional
     // amazonq-ignore-next-line
     public User createUser(CreateUserRequest req) {
+        if (req.getPhone() != null && !req.getPhone().isBlank()) {
+            String cleanPhone = req.getPhone().trim();
+            if (!cleanPhone.matches("^[6-9]\\d{9}$")) {
+                throw new RuntimeException("Invalid mobile number: '" + cleanPhone + "'. Must be a valid 10-digit mobile number starting with 6, 7, 8, or 9.");
+            }
+        }
+        if (req.getGuardianPhone() != null && !req.getGuardianPhone().isBlank()) {
+            String cleanGuardianPhone = req.getGuardianPhone().trim();
+            if (!cleanGuardianPhone.matches("^[6-9]\\d{9}$")) {
+                throw new RuntimeException("Invalid guardian mobile number: '" + cleanGuardianPhone + "'. Must be a valid 10-digit mobile number starting with 6, 7, 8, or 9.");
+            }
+        }
+
         // amazonq-ignore-next-line
         User.Role role = User.Role.valueOf(req.getRole().toUpperCase());
         User existing = userRepository.findByEmail(req.getEmail()).orElse(null);
@@ -112,6 +125,8 @@ public class UserService {
                     e.setCourseTitle(req.getCourse());
                     e.setEnrollmentDate(req.getEnrollmentDate());
                     e.setPaymentStatus(req.getPaymentStatus());
+                    e.setBatchName(req.getBatchName());
+                    e.setBatchId(req.getBatchId());
                     enrollmentRepository.save(e);
                 } else {
                     throw new RuntimeException("Student is already enrolled in this course.");
@@ -168,6 +183,8 @@ public class UserService {
             e.setCourseTitle(req.getCourse());
             e.setEnrollmentDate(req.getEnrollmentDate());
             e.setPaymentStatus(req.getPaymentStatus());
+            e.setBatchName(req.getBatchName());
+            e.setBatchId(req.getBatchId());
             enrollmentRepository.save(e);
         }
     }

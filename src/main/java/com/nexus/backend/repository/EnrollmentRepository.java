@@ -16,7 +16,11 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     void deleteByStudent(Student student);
     int countByCourseTitle(String courseTitle);
     int countByCourseTitleIn(List<String> courseTitles);
-    List<Enrollment> findByCourseTitle(String courseTitle);
+    List<Enrollment> findByBatchName(String batchName);
+    List<Enrollment> findByBatchId(Long batchId);
+
+    @Query("SELECT e FROM Enrollment e JOIN FETCH e.student s LEFT JOIN FETCH s.user WHERE e.student = :student AND LOWER(TRIM(e.courseTitle)) = LOWER(TRIM(:courseTitle))")
+    List<Enrollment> findByStudentAndCourseTitleIgnoreCase(@Param("student") Student student, @Param("courseTitle") String courseTitle);
 
     // Case-insensitive fetch with Student AND User joined eagerly
     @Query("SELECT e FROM Enrollment e JOIN FETCH e.student s LEFT JOIN FETCH s.user WHERE LOWER(TRIM(e.courseTitle)) = LOWER(TRIM(:courseTitle))")

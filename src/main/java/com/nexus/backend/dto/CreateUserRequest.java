@@ -18,6 +18,10 @@ public class CreateUserRequest {
     @Email
     private String email;
 
+    @jakarta.validation.constraints.Pattern(
+        regexp = "^[6-9]\\d{9}$",
+        message = "Mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9"
+    )
     private String phone;
 
     private String dob;
@@ -32,10 +36,20 @@ public class CreateUserRequest {
     @JsonProperty("guardianName")
     private String guardianName;
 
+    @jakarta.validation.constraints.Pattern(
+        regexp = "^$|^[6-9]\\d{9}$",
+        message = "Guardian mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9"
+    )
     @JsonProperty("guardianPhone")
     private String guardianPhone;
 
     private String course;
+
+    @JsonProperty("batchName")
+    private String batchName;
+
+    @JsonProperty("batchId")
+    private Long batchId;
 
     @JsonProperty("enrollmentDate")
     private String enrollmentDate;

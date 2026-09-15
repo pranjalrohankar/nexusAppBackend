@@ -34,6 +34,14 @@ public class DatabaseSchemaRepairRunner implements CommandLineRunner {
             "UPDATE security_settings SET activity_status_enabled = true WHERE activity_status_enabled IS NULL",
             "UPDATE security_settings SET online = false WHERE online IS NULL",
 
+            // Enrollments batch columns
+            "ALTER TABLE IF EXISTS enrollments ADD COLUMN IF NOT EXISTS batch_name VARCHAR(255)",
+            "ALTER TABLE IF EXISTS enrollments ADD COLUMN IF NOT EXISTS batch_id BIGINT",
+            "ALTER TABLE IF EXISTS \"enrollments\" ADD COLUMN IF NOT EXISTS batch_name VARCHAR(255)",
+            "ALTER TABLE IF EXISTS \"enrollments\" ADD COLUMN IF NOT EXISTS batch_id BIGINT",
+            "ALTER TABLE IF EXISTS \"Enrollments\" ADD COLUMN IF NOT EXISTS batch_name VARCHAR(255)",
+            "ALTER TABLE IF EXISTS \"Enrollments\" ADD COLUMN IF NOT EXISTS batch_id BIGINT",
+
             // Courses table variations
             "ALTER TABLE IF EXISTS courses ADD COLUMN IF NOT EXISTS covered_topics TEXT",
             "ALTER TABLE IF EXISTS \"courses\" ADD COLUMN IF NOT EXISTS covered_topics TEXT",
@@ -85,7 +93,13 @@ public class DatabaseSchemaRepairRunner implements CommandLineRunner {
             "ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS file_type VARCHAR(100)",
             "ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS uploaded_by_email VARCHAR(255)",
             "ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS uploaded_by_role VARCHAR(50)",
-            "ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP"
+            "ALTER TABLE IF EXISTS student_material ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP",
+
+            // Sync missing student enrollments from students.course
+            "INSERT INTO enrollments (student_id, course_title, enrollment_date, payment_status) SELECT s.id, TRIM(s.course), COALESCE(s.enrollment_date, '2026-06-01'), COALESCE(s.payment_status, 'PAID') FROM students s WHERE s.course IS NOT NULL AND TRIM(s.course) != '' AND NOT EXISTS (SELECT 1 FROM enrollments e WHERE e.student_id = s.id AND LOWER(TRIM(e.course_title)) = LOWER(TRIM(s.course)))",
+
+            // Delete duplicate enrollments keeping the one with batch assigned or lowest ID
+            "DELETE FROM enrollments e1 WHERE e1.id IN (SELECT e_dup.id FROM enrollments e_dup JOIN enrollments e_keep ON e_dup.student_id = e_keep.student_id AND LOWER(TRIM(e_dup.course_title)) = LOWER(TRIM(e_keep.course_title)) AND e_dup.id > e_keep.id WHERE (e_keep.batch_name IS NOT NULL AND e_dup.batch_name IS NULL) OR (e_keep.batch_name IS NOT NULL AND e_dup.batch_name IS NOT NULL) OR (e_keep.batch_name IS NULL AND e_dup.batch_name IS NULL))"
         );
 
         for (String sql : ddlStatements) {
