@@ -47,6 +47,8 @@ public class AdminController {
     private final BatchRepository batchRepository;
     private final SecuritySettingsRepository securitySettingsRepository;
     private final AppNotificationService appNotificationService;
+    private final com.nexus.backend.repository.PasswordResetRequestRepository passwordResetRequestRepository;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @GetMapping("/profile")
     @Transactional(readOnly = true)
@@ -448,6 +450,53 @@ public class AdminController {
         teacherRepository.delete(t);
         userRepository.delete(user);
         return ResponseEntity.ok(ApiResponse.ok("Teacher deleted", null));
+    }
+
+    // ── Password Reset Requests Endpoints for Admin ──
+    @GetMapping("/password-resets")
+    public ResponseEntity<ApiResponse> getPasswordResetRequests() {
+        List<com.nexus.backend.model.PasswordResetRequest> list = passwordResetRequestRepository.findAllByOrderByCreatedAtDesc();
+        long pendingCount = list.stream().filter(r -> "PENDING".equalsIgnoreCase(r.getStatus())).count();
+        Map<String, Object> result = new HashMap<>();
+        result.put("requests", list);
+        result.put("pendingCount", pendingCount);
+        result.put("totalCount", list.size());
+        return ResponseEntity.ok(ApiResponse.ok("Password reset requests fetched", result));
+    }
+
+    @PutMapping("/password-resets/{id}/resolve")
+    public ResponseEntity<ApiResponse> resolvePasswordReset(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body,
+            org.springframework.security.core.Authentication auth) {
+
+        com.nexus.backend.model.PasswordResetRequest req = passwordResetRequestRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Password reset request not found"));
+
+        String adminName = auth != null && auth.getName() != null ? auth.getName() : "Admin";
+        req.setStatus("RESOLVED");
+        req.setResolvedAt(java.time.LocalDateTime.now());
+        req.setResolvedBy(adminName);
+        passwordResetRequestRepository.save(req);
+
+        // If newPassword provided, update user's password directly
+        if (body != null && body.containsKey("newPassword") && !body.get("newPassword").isBlank()) {
+            String newPass = body.get("newPassword").trim();
+            userRepository.findByEmailIgnoreCase(req.getEmail())
+                    .or(() -> userRepository.findByEmail(req.getEmail()))
+                    .ifPresent(u -> {
+                        u.setPassword(passwordEncoder.encode(newPass));
+                        userRepository.save(u);
+                    });
+        }
+
+        return ResponseEntity.ok(ApiResponse.ok("Password reset request marked as resolved", req));
+    }
+
+    @DeleteMapping("/password-resets/{id}")
+    public ResponseEntity<ApiResponse> deletePasswordResetRequest(@PathVariable Long id) {
+        passwordResetRequestRepository.deleteById(id);
+        return ResponseEntity.ok(ApiResponse.ok("Password reset request deleted", null));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

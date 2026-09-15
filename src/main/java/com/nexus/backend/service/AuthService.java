@@ -33,6 +33,7 @@ public class AuthService {
     private final SecuritySettingsRepository securitySettingsRepository;
     private final EmailService emailService;
     private final NotificationService notificationService;
+    private final com.nexus.backend.repository.PasswordResetRequestRepository passwordResetRequestRepository;
 
     @Value("${nexus.enquiry.admin-email:adityanale1831@gmail.com}")
     private String adminNotificationEmail;
@@ -217,7 +218,21 @@ public class AuthService {
             String userRole = user.getRole() != null ? user.getRole().name() : "STUDENT";
             String requestTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("MMM dd, yyyy - hh:mm a", Locale.ROOT));
 
-            // 1. Send in-app notification to Admin
+            // 1. Save persistent PasswordResetRequest entity for Admin Panel
+            try {
+                com.nexus.backend.model.PasswordResetRequest resetReq = com.nexus.backend.model.PasswordResetRequest.builder()
+                        .name(userName)
+                        .email(cleanEmail)
+                        .role(userRole)
+                        .status("PENDING")
+                        .createdAt(LocalDateTime.now())
+                        .build();
+                passwordResetRequestRepository.save(resetReq);
+            } catch (Exception e) {
+                System.err.println("Failed to save password reset request: " + e.getMessage());
+            }
+
+            // 2. Send in-app notification to Admin
             try {
                 notificationService.createNotification(
                         "Password Reset Request: " + userName + " (" + cleanEmail + ")",
@@ -228,7 +243,7 @@ public class AuthService {
                 System.err.println("Failed to create in-app notification: " + e.getMessage());
             }
 
-            // 2. Send email alert to Admin asynchronously in background (non-blocking for fast UI response)
+            // 3. Send email alert to Admin asynchronously in background (non-blocking for fast UI response)
             java.util.concurrent.CompletableFuture.runAsync(() -> {
                 try {
                     emailService.sendPasswordResetAlertToAdmin(adminNotificationEmail, userName, cleanEmail, userRole, requestTime);
